@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blink Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0d14;--surface:#13131f;--surface2:#1c1c2e;--border:#252538;--accent:#7c6fff;--accent2:#ff6fb0;--text:#e2e2f0;--text2:#7878a0;--green:#3effa0;--red:#ff4f6f}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.screen{display:none;flex:1;height:100vh}.screen.active{display:flex}
+
+#auth-screen{align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 60% at 10% 90%,#7c6fff22 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,#ff6fb022 0%,transparent 60%),var(--bg)}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 32px 80px #0008;text-align:center}
+.auth-logo{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.auth-sub{color:var(--text2);font-size:.92rem;margin-bottom:40px;font-family:'Space Mono',monospace}
+.auth-label{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text2);text-align:left;display:block;margin-bottom:8px}
+#name-input{width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:16px 20px;color:var(--text);font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:600;outline:none;transition:border-color .2s;text-align:center;margin-bottom:16px}
+#name-input:focus{border-color:var(--accent)}
+.btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),#a06fff);border:none;border-radius:12px;padding:16px;color:#fff;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.88}
+
+#app-screen{flex-direction:row;overflow:hidden}
+#sidebar{width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh}
+.sidebar-header{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.brand{font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:14px}
+.my-profile{display:flex;align-items:center;gap:10px}
+.my-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;color:#fff;flex-shrink:0}
+.my-name-wrap{flex:1;overflow:hidden}
+.my-name-label{font-size:.7rem;color:var(--text2);font-family:'Space Mono',monospace}
+#my-name{font-weight:700;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.75rem;padding:5px 10px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.logout-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+.search-wrap{padding:12px 16px;border-bottom:1px solid var(--border)}
+#search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+#search-input:focus{border-color:var(--accent)}
+#users-list{flex:1;overflow-y:auto;padding:8px}
+#users-list::-webkit-scrollbar{width:4px}
+#users-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.user-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;transition:background .15s}
+.user-item:hover{background:var(--surface2)}
+.user-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:#fff;flex-shrink:0}
+.user-info{flex:1;overflow:hidden}
+.user-name{font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.online-dot{width:9px;height:9px;border-radius:50%;background:var(--border);flex-shrink:0}
+.online-dot.is-online{background:var(--green);box-shadow:0 0 6px var(--green)}
+.empty-state{text-align:center;color:var(--text2);padding:32px;font-size:.88rem;font-family:'Space Mono',monospace}
+.sidebar-bottom{padding:10px;border-top:1px solid var(--border);text-align:right}
+.admin-btn{background:none;border:none;color:#ffffff10;font-size:.65rem;font-family:'Space Mono',monospace;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .3s}
+.admin-btn:hover{color:#ff4f6f;background:#ff4f6f11}
+
+#main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+#chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text2);gap:12px}
+.placeholder-icon{font-size:3rem;opacity:.3}
+.placeholder-text{font-size:1.1rem;font-weight:600}
+.placeholder-sub{font-size:.85rem;font-family:'Space Mono',monospace}
+#chat-area{display:none;flex-direction:column;flex:1;overflow:hidden}
+.chat-header{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
+.menu-btn{display:none;background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:0 8px 0 0}
+#chat-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0}
+#chat-name{font-weight:700;font-size:1.05rem;flex:1}
+.call-btns{display:flex;gap:8px}
+.call-btn{background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;transition:all .2s}
+.call-btn:hover{background:var(--accent);border-color:var(--accent)}
+.call-btn.video:hover{background:#4fc3ff;border-color:#4fc3ff}
+
+#messages-box{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:4px}
+#messages-box::-webkit-scrollbar{width:4px}
+#messages-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.chat-input-bar{display:flex;align-items:center;gap:12px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface)}
+#msg-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:var(--text);font-family:'Syne',sans-serif;font-size:.95rem;outline:none;transition:border-color .2s}
+#msg-input:focus{border-color:var(--accent)}
+.send-btn{background:linear-gradient(135deg,var(--accent),#a06fff);border:none;border-radius:12px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.send-btn svg{fill:#fff}
+
+/* CALL OVERLAY */
+#call-overlay{display:none;position:fixed;inset:0;background:#000d;z-index:1000;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+#call-overlay.active{display:flex}
+#remote-video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:0;background:#000}
+#local-video{position:absolute;bottom:100px;right:20px;width:140px;height:100px;border-radius:12px;object-fit:cover;z-index:2;border:2px solid var(--accent);background:#111}
+.call-info{position:relative;z-index:3;text-align:center}
+.call-info-name{font-size:1.8rem;font-weight:800;color:#fff;margin-bottom:8px}
+.call-info-status{font-size:.9rem;color:#ffffff99;font-family:'Space Mono',monospace}
+.call-controls{position:absolute;bottom:30px;display:flex;gap:16px;z-index:3}
+.ctrl-btn{width:60px;height:60px;border-radius:50%;border:none;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.ctrl-btn:hover{transform:scale(1.1)}
+.ctrl-btn.end{background:var(--red)}
+.ctrl-btn.mute{background:var(--surface2);border:1px solid var(--border)}
+.ctrl-btn.cam{background:var(--surface2);border:1px solid var(--border)}
+.ctrl-btn.mute.active,.ctrl-btn.cam.active{background:#ff4f6f44;border-color:var(--red)}
+
+/* INCOMING CALL */
+#incoming-call{display:none;position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--accent);border-radius:20px;padding:20px 24px;z-index:2000;box-shadow:0 8px 40px #0008;min-width:280px}
+#incoming-call.active{display:block}
+.inc-title{font-size:.75rem;color:var(--text2);font-family:'Space Mono',monospace;margin-bottom:6px}
+.inc-name{font-size:1.2rem;font-weight:800;margin-bottom:16px}
+.inc-btns{display:flex;gap:10px}
+.inc-btn{flex:1;border:none;border-radius:10px;padding:11px;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;transition:opacity .2s}
+.inc-btn:hover{opacity:.85}
+.inc-btn.accept{background:var(--green);color:#000}
+.inc-btn.decline{background:var(--red);color:#fff}
+
+#error-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#ff4f6f;color:#fff;padding:12px 24px;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999}
+#error-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:680px){
+  #sidebar{position:fixed;left:0;top:0;z-index:100;transform:translateX(-100%);width:85vw;box-shadow:8px 0 32px #0008;transition:transform .25s}
+  #sidebar.open{transform:translateX(0)}
+  .menu-btn{display:block}
+  #main{width:100vw}
+  .auth-card{margin:16px;padding:32px 24px}
+  #open-sidebar-btn{display:flex !important}
+}
+</style>
+</head>
+<body>
+
+<div id="auth-screen" class="screen active">
+  <div class="auth-card">
+    <div class="auth-logo">Blink ⚡</div>
+    <div class="auth-sub">// just type your name and chat</div>
+    <label class="auth-label">What's your name?</label>
+    <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="20" autocomplete="off">
+    <button class="btn-primary" onclick="joinChat()">Join →</button>
+  </div>
+</div>
+
+<div id="app-screen" class="screen">
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">Blink ⚡</div>
+      <div class="my-profile">
+        <div class="my-av" id="my-avatar">?</div>
+        <div class="my-name-wrap">
+          <div class="my-name-label">chatting as</div>
+          <div id="my-name">...</div>
+        </div>
+        <button class="logout-btn" onclick="leaveChat()">Leave</button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input id="search-input" type="text" placeholder="Search people…" oninput="filterUsers(this.value)">
+    </div>
+    <div id="users-list"><div class="empty-state">Loading…</div></div>
+    <div class="sidebar-bottom">
+      <button onclick="deleteMyAccount()" style="width:100%;background:none;border:1px solid #ff4f6f;border-radius:10px;color:#ff4f6f;font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:10px;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='#ff4f6f22'" onmouseout="this.style.background='none'">🗑 Delete My Account</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="chat-placeholder">
+      <div class="placeholder-icon">💬</div>
+      <div class="placeholder-text">Pick someone to chat with</div>
+      <div class="placeholder-sub">// select a friend from the left</div>
+    </div>
+    <div id="chat-area">
+      <div class="chat-header">
+        <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').style.display = document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none';">☰</button>
+        <div id="chat-avatar">?</div>
+        <div id="chat-name">...</div>
+        <div class="call-btns">
+          <button class="call-btn" onclick="startCall('voice')" title="Voice call">🎙️</button>
+          <button class="call-btn video" onclick="startCall('video')" title="Video call">📹</button>
+        </div>
+      </div>
+      <div id="messages-box"></div>
+      <div class="chat-input-bar">
+        <input id="msg-input" type="text" placeholder="Type a message…">
+        <button class="send-btn" onclick="sendMessage()">
+          <svg width="20" height="20" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CALL OVERLAY -->
+<div id="call-overlay">
+  <video id="remote-video" autoplay playsinline></video>
+  <video id="local-video" autoplay playsinline muted></video>
+  <div class="call-info">
+    <div class="call-info-name" id="call-with-name">...</div>
+    <div class="call-info-status" id="call-status">Calling…</div>
+  </div>
+  <div class="call-controls">
+    <button class="ctrl-btn mute" id="mute-btn" onclick="toggleMute()" title="Mute">🎙️</button>
+    <button class="ctrl-btn end" onclick="endCall()" title="End call">📵</button>
+    <button class="ctrl-btn cam" id="cam-btn" onclick="toggleCam()" title="Camera">📹</button>
+  </div>
+</div>
+
+<!-- INCOMING CALL -->
+<div id="incoming-call">
+  <div class="inc-title">📞 Incoming call</div>
+  <div class="inc-name" id="caller-name">Someone</div>
+  <div class="inc-btns">
+    <button class="inc-btn accept" onclick="acceptCall()">Accept</button>
+    <button class="inc-btn decline" onclick="declineCall()">Decline</button>
+  </div>
+</div>
+
+<button onclick="deleteAllData()" style="position:fixed;top:10px;right:10px;background:none;border:none;color:#ffffff12;font-size:.6rem;font-family:'Space Mono',monospace;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .3s;z-index:999;" onmouseover="this.style.color='#ff4f6f';this.style.background='#ff4f6f11'" onmouseout="this.style.color='#ffffff12';this.style.background='none'">⚙</button>
+<!-- Mobile sidebar overlay -->
+<div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open')" style="display:none;position:fixed;inset:0;background:#00000066;z-index:99;"></div>
+<!-- Mobile open sidebar button -->
+<button id="open-sidebar-btn" onclick="document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').style.display = document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none';" style="display:none;position:fixed;bottom:90px;left:16px;z-index:200;background:linear-gradient(135deg,#7c6fff,#a06fff);border:none;border-radius:50%;width:52px;height:52px;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px #7c6fff66;align-items:center;justify-content:center;">👥</button>
+<div id="error-toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, set, onValue, off, push, query, orderByChild, limitToLast, update, remove, get } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAcmevlI-FqPB_biNZoPvLH2iyxTYoK3lc",
+  authDomain: "dddd-b82bc.firebaseapp.com",
+  databaseURL: "https://dddd-b82bc-default-rtdb.firebaseio.com",
+  projectId: "dddd-b82bc",
+  storageBucket: "dddd-b82bc.firebasestorage.app",
+  messagingSenderId: "804910597236",
+  appId: "1:804910597236:web:4c4b984f678e4dba4e7d21"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let myId=null,myName=null,currentChatId=null,currentChatUid=null,currentChatName=null;
+let currentChatListener=null,allUsers=[];
+let localStream=null,peerConnection=null,callType=null,isCaller=false;
+let muted=false,camOff=false,callListener=null;
+
+const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302'] }] };
+
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
+function av(n){ return n?n[0].toUpperCase():"?" }
+function col(id){ const c=["#7c6fff","#ff6fb0","#4fffb0","#ffb84f","#4fc3ff","#ff4f6f","#b4ff4f"]; let h=0; for(let i=0;i<id.length;i++) h=id.charCodeAt(i)+((h<<5)-h); return c[Math.abs(h)%c.length] }
+function timeAgo(ts){ if(!ts) return ""; const d=Date.now()-ts; if(d<60000) return "just now"; if(d<3600000) return Math.floor(d/60000)+"m ago"; return Math.floor(d/3600000)+"h ago" }
+function chatId(a,b){ return [a,b].sort().join("__") }
+function showErr(msg){ const e=document.getElementById("error-toast"); e.textContent=msg; e.classList.add("show"); setTimeout(()=>e.classList.remove("show"),3500) }
+function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active") }
+function getMyId(){ let id=localStorage.getItem("blink_uid"); if(!id){ id="u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36); localStorage.setItem("blink_uid",id); } return id; }
+
+window.joinChat = async ()=>{
+  const name=document.getElementById("name-input").value.trim();
+  if(!name) return showErr("Enter your name!");
+  if(name.length<2) return showErr("Name too short!");
+  myId=getMyId(); myName=name;
+  localStorage.setItem("blink_name",name);
+  await set(ref(db,"users/"+myId),{name,uid:myId,online:true,lastSeen:Date.now()});
+  enterApp();
+};
+
+window.leaveChat = async ()=>{
+  if(myId) await update(ref(db,"users/"+myId),{online:false});
+  if(currentChatListener){ off(currentChatListener); currentChatListener=null; }
+  if(callListener){ off(callListener); callListener=null; }
+  myId=null; myName=null;
+  showScreen("auth-screen");
+};
+
+window.deleteMyAccount = async ()=>{
+  if(!confirm("⚠️ Before you leave please delete your account!\n\nThis removes you permanently. Are you sure?")) return;
+  await set(ref(db,"users/"+myId), null);
+  localStorage.removeItem("blink_uid");
+  localStorage.removeItem("blink_name");
+  alert("Account deleted. Goodbye! 👋");
+  location.reload();
+};
+
+window.deleteAllData = async ()=>{
+  if(!confirm("Delete ALL users and chats?")) return;
+  if(!confirm("100% sure?")) return;
+  await set(ref(db,"users"),null);
+  await set(ref(db,"chats"),null);
+  await set(ref(db,"calls"),null);
+  localStorage.removeItem("blink_uid");
+  localStorage.removeItem("blink_name");
+  location.reload();
+};
+
+function enterApp(){
+  document.getElementById("my-name").textContent=myName;
+  document.getElementById("my-avatar").textContent=av(myName);
+  document.getElementById("my-avatar").style.background=col(myId);
+  showScreen("app-screen");
+  loadUsers();
+  listenForCalls();
+}
+
+function loadUsers(){
+  onValue(ref(db,"users"),snap=>{
+    const data=snap.val()||{};
+    allUsers=Object.values(data).filter(u=>u&&u.uid&&u.name&&u.uid!==myId);
+    renderUsers(document.getElementById("search-input").value.toLowerCase());
+  });
+}
+
+window.filterUsers=val=>renderUsers(val.toLowerCase());
+
+function renderUsers(filter=""){
+  const list=document.getElementById("users-list");
+  const filtered=filter?allUsers.filter(u=>u.name.toLowerCase().includes(filter)):allUsers;
+  if(!filtered.length){ list.innerHTML='<div class="empty-state">'+(allUsers.length===0?"No one else here yet!":"No users found")+'</div>'; return; }
+  list.innerHTML=filtered.map(u=>`
+    <div class="user-item" onclick="openChat('${u.uid}','${esc(u.name)}')">
+      <div class="user-av" style="background:${col(u.uid)}">${av(u.name)}</div>
+      <div class="user-info"><div class="user-name">${esc(u.name)}</div></div>
+      <div class="online-dot ${u.online?'is-online':''}"></div>
+    </div>`).join("");
+}
+
+window.openChat=(uid,name)=>{
+  currentChatId=chatId(myId,uid); currentChatUid=uid; currentChatName=name;
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("chat-name").textContent=name;
+  document.getElementById("chat-avatar").textContent=av(name);
+  document.getElementById("chat-avatar").style.background=col(uid);
+  document.getElementById("chat-placeholder").style.display="none";
+  document.getElementById("chat-area").style.display="flex";
+  if(currentChatListener) off(currentChatListener);
+  const msgsRef=query(ref(db,"chats/"+currentChatId+"/messages"),orderByChild("ts"),limitToLast(100));
+  currentChatListener=onValue(msgsRef,snap=>{
+    const msgs=Object.values(snap.val()||{}).sort((a,b)=>a.ts-b.ts);
+    renderMessages(msgs);
+  });
+};
+
+function renderMessages(msgs){
+  const box=document.getElementById("messages-box");
+  let html="",lastUid=null;
+  for(const m of msgs){
+    const mine=m.uid===myId,showName=m.uid!==lastUid; lastUid=m.uid;
+    const row=mine?'display:flex;justify-content:flex-end;margin:2px 0':'display:flex;justify-content:flex-start;margin:2px 0';
+    const bubble=mine?'background:#111;color:#fff;border:2px solid #444;border-radius:18px;border-bottom-right-radius:4px;padding:10px 16px;max-width:72%':'background:#fff;color:#000;border:2px solid #ddd;border-radius:18px;border-bottom-left-radius:4px;padding:10px 16px;max-width:72%';
+    const txt=mine?'color:#fff;word-break:break-word':'color:#000;font-weight:600;word-break:break-word';
+    const time=mine?'font-size:.68rem;margin-top:4px;color:#aaa;text-align:right;font-family:monospace':'font-size:.68rem;margin-top:4px;color:#777;text-align:right;font-family:monospace';
+    const ns=mine?'text-align:right;font-size:.68rem;font-weight:700;color:#7c6fff;margin-bottom:2px;font-family:monospace;text-transform:uppercase':'text-align:left;font-size:.68rem;font-weight:700;color:#ff6fb0;margin-bottom:2px;font-family:monospace;text-transform:uppercase';
+    html+=`<div style="margin-bottom:4px">${showName?`<div style="${ns}">${mine?'You':esc(m.name||'?')}</div>`:''}<div style="${row}"><div style="${bubble}"><div style="${txt}">${esc(m.text)}</div><div style="${time}">${timeAgo(m.ts)}</div></div></div></div>`;
+  }
+  box.innerHTML=html; box.scrollTop=box.scrollHeight;
+}
+
+window.sendMessage=async()=>{
+  const input=document.getElementById("msg-input"),text=input.value.trim();
+  if(!text||!currentChatId) return;
+  input.value="";
+  await push(ref(db,"chats/"+currentChatId+"/messages"),{text,uid:myId,name:myName,ts:Date.now()});
+};
+
+// ── CALLING ─────────────────────────────────────────────────────────────────
+function listenForCalls(){
+  callListener=onValue(ref(db,"calls/"+myId),async snap=>{
+    const data=snap.val();
+    if(!data) return;
+    if(data.status==="incoming" && !peerConnection){
+      document.getElementById("caller-name").textContent=data.callerName;
+      document.getElementById("incoming-call").classList.add("active");
+      window._pendingCall=data;
+    }
+    if(data.status==="accepted" && isCaller && peerConnection){
+      document.getElementById("call-status").textContent="Connected ✓";
+      if(data.answer){
+        const ans=new RTCSessionDescription(JSON.parse(data.answer));
+        if(peerConnection.signalingState!=="stable") await peerConnection.setRemoteDescription(ans);
+      }
+    }
+    if(data.status==="declined" && isCaller){ showErr("Call declined."); endCall(); }
+    if(data.status==="ended"){ endCall(); }
+    if(data.candidate && peerConnection){
+      try{ await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(data.candidate))); }catch(e){}
+    }
+  });
+}
+
+window.startCall=async(type)=>{
+  if(!currentChatUid) return showErr("Open a chat first!");
+  callType=type; isCaller=true;
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia(type==='video'?{video:true,audio:true}:{audio:true});
+    document.getElementById("local-video").srcObject=localStream;
+    if(type!=='video') document.getElementById("local-video").style.display="none";
+    showCallOverlay(currentChatName);
+    document.getElementById("call-status").textContent="Calling…";
+    peerConnection=new RTCPeerConnection(servers);
+    localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+    peerConnection.ontrack=e=>{ document.getElementById("remote-video").srcObject=e.streams[0]; };
+    peerConnection.onicecandidate=e=>{
+      if(e.candidate) update(ref(db,"calls/"+currentChatUid),{candidate:JSON.stringify(e.candidate.toJSON())});
+    };
+    const offer=await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    await set(ref(db,"calls/"+currentChatUid),{status:"incoming",callerName:myName,callerId:myId,type,offer:JSON.stringify(offer)});
+  }catch(e){ showErr("Could not access mic/camera."); endCall(); }
+};
+
+window.acceptCall=async()=>{
+  const data=window._pendingCall;
+  if(!data) return;
+  document.getElementById("incoming-call").classList.remove("active");
+  callType=data.type; isCaller=false;
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia(data.type==='video'?{video:true,audio:true}:{audio:true});
+    document.getElementById("local-video").srcObject=localStream;
+    if(data.type!=='video') document.getElementById("local-video").style.display="none";
+    showCallOverlay(data.callerName);
+    document.getElementById("call-status").textContent="Connected ✓";
+    peerConnection=new RTCPeerConnection(servers);
+    localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+    peerConnection.ontrack=e=>{ document.getElementById("remote-video").srcObject=e.streams[0]; };
+    peerConnection.onicecandidate=e=>{
+      if(e.candidate) update(ref(db,"calls/"+data.callerId),{candidate:JSON.stringify(e.candidate.toJSON())});
+    };
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.offer)));
+    const answer=await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    await update(ref(db,"calls/"+myId),{status:"accepted",answer:JSON.stringify(answer)});
+  }catch(e){ showErr("Could not access mic/camera."); endCall(); }
+};
+
+window.declineCall=async()=>{
+  const data=window._pendingCall;
+  document.getElementById("incoming-call").classList.remove("active");
+  if(data) await update(ref(db,"calls/"+myId),{status:"declined"});
+  window._pendingCall=null;
+};
+
+window.endCall=async()=>{
+  if(peerConnection){ peerConnection.close(); peerConnection=null; }
+  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+  document.getElementById("call-overlay").classList.remove("active");
+  document.getElementById("remote-video").srcObject=null;
+  document.getElementById("local-video").srcObject=null;
+  document.getElementById("local-video").style.display="block";
+  muted=false; camOff=false;
+  if(currentChatUid && isCaller) await set(ref(db,"calls/"+currentChatUid),{status:"ended"});
+  if(myId) await set(ref(db,"calls/"+myId),null);
+  isCaller=false;
+};
+
+window.toggleMute=()=>{
+  if(!localStream) return;
+  muted=!muted;
+  localStream.getAudioTracks().forEach(t=>t.enabled=!muted);
+  document.getElementById("mute-btn").classList.toggle("active",muted);
+  document.getElementById("mute-btn").textContent=muted?"🔇":"🎙️";
+};
+
+window.toggleCam=()=>{
+  if(!localStream) return;
+  camOff=!camOff;
+  localStream.getVideoTracks().forEach(t=>t.enabled=!camOff);
+  document.getElementById("cam-btn").classList.toggle("active",camOff);
+  document.getElementById("cam-btn").textContent=camOff?"📷":"📹";
+};
+
+function showCallOverlay(name){
+  document.getElementById("call-with-name").textContent=name;
+  document.getElementById("call-overlay").classList.add("active");
+}
+
+document.getElementById("msg-input").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();} });
+document.getElementById("name-input").addEventListener("keydown",e=>{ if(e.key==="Enter") window.joinChat(); });
+
+const savedName=localStorage.getItem("blink_name"),savedId=localStorage.getItem("blink_uid");
+if(savedName&&savedId){ myId=savedId; myName=savedName; set(ref(db,"users/"+myId),{name:myName,uid:myId,online:true,lastSeen:Date.now()}); enterApp(); }
+</script>
+</body>
+</html>
