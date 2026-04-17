@@ -174,8 +174,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
         <div id="chat-avatar">?</div>
         <div id="chat-name">...</div>
         <div class="call-btns">
-          <button class="call-btn" onclick="startCall('voice')" title="Voice call">🎙️</button>
-          <button class="call-btn video" onclick="startCall('video')" title="Video call">📹</button>
+          <button class="call-btn video" onclick="startVideoCall()" title="Video call">📹 Call</button>
         </div>
       </div>
       <div id="messages-box"></div>
@@ -350,15 +349,12 @@ window.sendMessage=async()=>{
 // ── CALLING ────────────────────────────────────────────────────────────────
 window.startVideoCall = ()=>{
   if(!currentChatId) return showErr("Open a chat first!");
-  // Create a unique room based on the chat ID
-  const room = "blink-" + currentChatId.replace("__","-").substring(0,20);
-  const url = "https://meet.jit.si/" + room;
-  // Send call link in chat
+  const room = "blink-" + currentChatId.replace("__","").substring(0,12);
+  const url = "https://whereby.com/" + room;
   push(ref(db,"chats/"+currentChatId+"/messages"),{
-    text: "📹 I started a video call! Join here: " + url,
+    text: "📹 Video call! No login needed, just click: " + url,
     uid: myId, name: myName, ts: Date.now()
   });
-  // Open call for caller too
   window.open(url, "_blank");
 };
 
