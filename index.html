@@ -116,7 +116,21 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 </head>
 <body>
 
-<div id="auth-screen" class="screen active">
+<!-- PASSWORD GATE -->
+<div id="gate-screen" class="screen active">
+  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:radial-gradient(ellipse 80% 60% at 10% 90%,#7c6fff22 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,#ff6fb022 0%,transparent 60%),var(--bg);">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px 40px;width:100%;max-width:380px;box-shadow:0 32px 80px #0008;text-align:center;margin:16px;">
+      <div style="font-size:2.5rem;margin-bottom:8px;">🔒</div>
+      <div style="font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;">Blink ⚡</div>
+      <div style="color:var(--text2);font-size:.88rem;font-family:'Space Mono',monospace;margin-bottom:32px;">// enter password to continue</div>
+      <input id="gate-input" type="password" placeholder="Password" style="width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:14px 20px;color:var(--text);font-family:'Syne',sans-serif;font-size:1.1rem;text-align:center;outline:none;margin-bottom:12px;letter-spacing:4px;" onkeydown="if(event.key==='Enter')checkGate()">
+      <div id="gate-error" style="color:#ff4f6f;font-size:.82rem;font-family:'Space Mono',monospace;margin-bottom:12px;min-height:18px;"></div>
+      <button onclick="checkGate()" style="width:100%;background:linear-gradient(135deg,var(--accent),#a06fff);border:none;border-radius:12px;padding:14px;color:#fff;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;">Unlock →</button>
+    </div>
+  </div>
+</div>
+
+<div id="auth-screen" class="screen">
   <div class="auth-card">
     <div class="auth-logo">Blink ⚡</div>
     <div class="auth-sub">// just type your name and chat</div>
@@ -175,31 +189,6 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
   </div>
 </div>
 
-<!-- CALL OVERLAY -->
-<div id="call-overlay">
-  <video id="remote-video" autoplay playsinline></video>
-  <video id="local-video" autoplay playsinline muted></video>
-  <div class="call-info">
-    <div class="call-info-name" id="call-with-name">...</div>
-    <div class="call-info-status" id="call-status">Calling…</div>
-  </div>
-  <div class="call-controls">
-    <button class="ctrl-btn mute" id="mute-btn" onclick="toggleMute()" title="Mute">🎙️</button>
-    <button class="ctrl-btn end" onclick="endCall()" title="End call">📵</button>
-    <button class="ctrl-btn cam" id="cam-btn" onclick="toggleCam()" title="Camera">📹</button>
-  </div>
-</div>
-
-<!-- INCOMING CALL -->
-<div id="incoming-call">
-  <div class="inc-title">📞 Incoming call</div>
-  <div class="inc-name" id="caller-name">Someone</div>
-  <div class="inc-btns">
-    <button class="inc-btn accept" onclick="acceptCall()">Accept</button>
-    <button class="inc-btn decline" onclick="declineCall()">Decline</button>
-  </div>
-</div>
-
 <button onclick="deleteAllData()" style="position:fixed;top:10px;right:10px;background:none;border:none;color:#ffffff12;font-size:.6rem;font-family:'Space Mono',monospace;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .3s;z-index:999;" onmouseover="this.style.color='#ff4f6f';this.style.background='#ff4f6f11'" onmouseout="this.style.color='#ffffff12';this.style.background='none'">⚙</button>
 <!-- Mobile sidebar overlay -->
 <div id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open')" style="display:none;position:fixed;inset:0;background:#00000066;z-index:99;"></div>
@@ -239,6 +228,18 @@ function chatId(a,b){ return [a,b].sort().join("__") }
 function showErr(msg){ const e=document.getElementById("error-toast"); e.textContent=msg; e.classList.add("show"); setTimeout(()=>e.classList.remove("show"),3500) }
 function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active") }
 function getMyId(){ let id=localStorage.getItem("blink_uid"); if(!id){ id="u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36); localStorage.setItem("blink_uid",id); } return id; }
+
+window.checkGate = ()=>{
+  const val = document.getElementById("gate-input").value;
+  if(val === "1234"){
+    document.getElementById("gate-screen").classList.remove("active");
+    document.getElementById("auth-screen").classList.add("active");
+  } else {
+    document.getElementById("gate-error").textContent = "❌ Wrong password!";
+    document.getElementById("gate-input").value = "";
+    setTimeout(()=>document.getElementById("gate-error").textContent="", 2000);
+  }
+};
 
 window.joinChat = async ()=>{
   const name=document.getElementById("name-input").value.trim();
@@ -284,7 +285,6 @@ function enterApp(){
   document.getElementById("my-avatar").style.background=col(myId);
   showScreen("app-screen");
   loadUsers();
-  listenForCalls();
 }
 
 function loadUsers(){
@@ -347,116 +347,20 @@ window.sendMessage=async()=>{
   await push(ref(db,"chats/"+currentChatId+"/messages"),{text,uid:myId,name:myName,ts:Date.now()});
 };
 
-// ── CALLING ─────────────────────────────────────────────────────────────────
-function listenForCalls(){
-  callListener=onValue(ref(db,"calls/"+myId),async snap=>{
-    const data=snap.val();
-    if(!data) return;
-    if(data.status==="incoming" && !peerConnection){
-      document.getElementById("caller-name").textContent=data.callerName;
-      document.getElementById("incoming-call").classList.add("active");
-      window._pendingCall=data;
-    }
-    if(data.status==="accepted" && isCaller && peerConnection){
-      document.getElementById("call-status").textContent="Connected ✓";
-      if(data.answer){
-        const ans=new RTCSessionDescription(JSON.parse(data.answer));
-        if(peerConnection.signalingState!=="stable") await peerConnection.setRemoteDescription(ans);
-      }
-    }
-    if(data.status==="declined" && isCaller){ showErr("Call declined."); endCall(); }
-    if(data.status==="ended"){ endCall(); }
-    if(data.candidate && peerConnection){
-      try{ await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(data.candidate))); }catch(e){}
-    }
+// ── CALLING ────────────────────────────────────────────────────────────────
+window.startVideoCall = ()=>{
+  if(!currentChatId) return showErr("Open a chat first!");
+  // Create a unique room based on the chat ID
+  const room = "blink-" + currentChatId.replace("__","-").substring(0,20);
+  const url = "https://meet.jit.si/" + room;
+  // Send call link in chat
+  push(ref(db,"chats/"+currentChatId+"/messages"),{
+    text: "📹 I started a video call! Join here: " + url,
+    uid: myId, name: myName, ts: Date.now()
   });
-}
-
-window.startCall=async(type)=>{
-  if(!currentChatUid) return showErr("Open a chat first!");
-  callType=type; isCaller=true;
-  try{
-    localStream=await navigator.mediaDevices.getUserMedia(type==='video'?{video:true,audio:true}:{audio:true});
-    document.getElementById("local-video").srcObject=localStream;
-    if(type!=='video') document.getElementById("local-video").style.display="none";
-    showCallOverlay(currentChatName);
-    document.getElementById("call-status").textContent="Calling…";
-    peerConnection=new RTCPeerConnection(servers);
-    localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
-    peerConnection.ontrack=e=>{ document.getElementById("remote-video").srcObject=e.streams[0]; };
-    peerConnection.onicecandidate=e=>{
-      if(e.candidate) update(ref(db,"calls/"+currentChatUid),{candidate:JSON.stringify(e.candidate.toJSON())});
-    };
-    const offer=await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    await set(ref(db,"calls/"+currentChatUid),{status:"incoming",callerName:myName,callerId:myId,type,offer:JSON.stringify(offer)});
-  }catch(e){ showErr("Could not access mic/camera."); endCall(); }
+  // Open call for caller too
+  window.open(url, "_blank");
 };
-
-window.acceptCall=async()=>{
-  const data=window._pendingCall;
-  if(!data) return;
-  document.getElementById("incoming-call").classList.remove("active");
-  callType=data.type; isCaller=false;
-  try{
-    localStream=await navigator.mediaDevices.getUserMedia(data.type==='video'?{video:true,audio:true}:{audio:true});
-    document.getElementById("local-video").srcObject=localStream;
-    if(data.type!=='video') document.getElementById("local-video").style.display="none";
-    showCallOverlay(data.callerName);
-    document.getElementById("call-status").textContent="Connected ✓";
-    peerConnection=new RTCPeerConnection(servers);
-    localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
-    peerConnection.ontrack=e=>{ document.getElementById("remote-video").srcObject=e.streams[0]; };
-    peerConnection.onicecandidate=e=>{
-      if(e.candidate) update(ref(db,"calls/"+data.callerId),{candidate:JSON.stringify(e.candidate.toJSON())});
-    };
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.offer)));
-    const answer=await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    await update(ref(db,"calls/"+myId),{status:"accepted",answer:JSON.stringify(answer)});
-  }catch(e){ showErr("Could not access mic/camera."); endCall(); }
-};
-
-window.declineCall=async()=>{
-  const data=window._pendingCall;
-  document.getElementById("incoming-call").classList.remove("active");
-  if(data) await update(ref(db,"calls/"+myId),{status:"declined"});
-  window._pendingCall=null;
-};
-
-window.endCall=async()=>{
-  if(peerConnection){ peerConnection.close(); peerConnection=null; }
-  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
-  document.getElementById("call-overlay").classList.remove("active");
-  document.getElementById("remote-video").srcObject=null;
-  document.getElementById("local-video").srcObject=null;
-  document.getElementById("local-video").style.display="block";
-  muted=false; camOff=false;
-  if(currentChatUid && isCaller) await set(ref(db,"calls/"+currentChatUid),{status:"ended"});
-  if(myId) await set(ref(db,"calls/"+myId),null);
-  isCaller=false;
-};
-
-window.toggleMute=()=>{
-  if(!localStream) return;
-  muted=!muted;
-  localStream.getAudioTracks().forEach(t=>t.enabled=!muted);
-  document.getElementById("mute-btn").classList.toggle("active",muted);
-  document.getElementById("mute-btn").textContent=muted?"🔇":"🎙️";
-};
-
-window.toggleCam=()=>{
-  if(!localStream) return;
-  camOff=!camOff;
-  localStream.getVideoTracks().forEach(t=>t.enabled=!camOff);
-  document.getElementById("cam-btn").classList.toggle("active",camOff);
-  document.getElementById("cam-btn").textContent=camOff?"📷":"📹";
-};
-
-function showCallOverlay(name){
-  document.getElementById("call-with-name").textContent=name;
-  document.getElementById("call-overlay").classList.add("active");
-}
 
 document.getElementById("msg-input").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();} });
 document.getElementById("name-input").addEventListener("keydown",e=>{ if(e.key==="Enter") window.joinChat(); });
