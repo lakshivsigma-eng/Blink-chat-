@@ -355,9 +355,13 @@ window.sendMessage=async()=>{
 // ── CALLING ────────────────────────────────────────────────────────────────
 window.startVideoCall = ()=>{
   if(!currentChatId) return showErr("Open a chat first!");
-  const url = "https://whereby.com/grade-5-only";
+  // Random Google Meet style room code
+  const chars = "abcdefghijklmnopqrstuvwxyz";
+  const r = (n) => Array.from({length:n}, ()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+  const code = r(3) + "-" + r(4) + "-" + r(3);
+  const url = "https://meet.google.com/" + code;
   push(ref(db,"chats/"+currentChatId+"/messages"),{
-    text: "📹 Join the video call here: " + url,
+    text: "📹 Join my video call (no account needed on phone!): " + url,
     uid: myId, name: myName, ts: Date.now()
   });
   window.open(url, "_blank");
