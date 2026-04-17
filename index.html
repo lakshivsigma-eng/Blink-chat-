@@ -349,10 +349,11 @@ window.sendMessage=async()=>{
 // ── CALLING ────────────────────────────────────────────────────────────────
 window.startVideoCall = ()=>{
   if(!currentChatId) return showErr("Open a chat first!");
-  const room = "blink-" + currentChatId.replace("__","").substring(0,12);
-  const url = "https://whereby.com/" + room;
+  const room = "BlinkChat" + Math.random().toString(36).substring(2,8).toUpperCase();
+  const url = "https://meet.jit.si/" + room + "#config.lobby.enabled=false&config.requireDisplayName=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false";
+  const joinUrl = "https://meet.jit.si/" + room + "#config.lobby.enabled=false&config.requireDisplayName=false";
   push(ref(db,"chats/"+currentChatId+"/messages"),{
-    text: "📹 Video call! No login needed, just click: " + url,
+    text: "📹 Video call started! Click to join (no login needed): " + joinUrl,
     uid: myId, name: myName, ts: Date.now()
   });
   window.open(url, "_blank");
