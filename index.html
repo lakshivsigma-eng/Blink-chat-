@@ -355,10 +355,10 @@ window.sendMessage=async()=>{
 // ── CALLING ────────────────────────────────────────────────────────────────
 window.startVideoCall = ()=>{
   if(!currentChatId) return showErr("Open a chat first!");
-  const room = "BlinkChatRoom" + currentChatId.replace("__","X").substring(0,10);
-  const url = "https://8x8.vc/vpaas-magic-cookie-free/" + room;
+  const room = "blink" + currentChatId.replace("__","").substring(0,12);
+  const url = "https://meet.no42.org/join/" + room;
   push(ref(db,"chats/"+currentChatId+"/messages"),{
-    text: "📹 Video call! No login needed 👉 " + url,
+    text: "📹 Video call! No login, no waiting, just click 👉 " + url,
     uid: myId, name: myName, ts: Date.now()
   });
   window.open(url, "_blank");
