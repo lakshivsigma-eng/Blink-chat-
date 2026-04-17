@@ -358,7 +358,7 @@ window.startVideoCall = ()=>{
   const room = "blink" + currentChatId.replace("__","").substring(0,12);
   const url = "https://meet.no42.org/join/" + room;
   push(ref(db,"chats/"+currentChatId+"/messages"),{
-    text: "📹 Video call! No login, no waiting, just click 👉 " + url,
+    text: "📹 " + url,
     uid: myId, name: myName, ts: Date.now()
   });
   window.open(url, "_blank");
