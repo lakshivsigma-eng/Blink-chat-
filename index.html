@@ -107,18 +107,14 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);height
 @media(max-width:680px){
   #sidebar{position:fixed;left:0;top:0;z-index:100;transform:translateX(-100%);width:85vw;box-shadow:8px 0 32px #0008;transition:transform .25s}
   #sidebar.open{transform:translateX(0)}
-  .menu-btn{display:flex !important;width:44px;height:44px;align-items:center;justify-content:center;background:var(--surface2);border-radius:10px;font-size:1.2rem}
-  #main{width:100vw}
-  .auth-card{margin:16px;padding:32px 24px}
+  #main{width:100vw;height:100vh;display:flex;flex-direction:column}
+  #chat-area{flex:1;display:flex;flex-direction:column;height:100%}
+  #messages-box{flex:1;overflow-y:scroll;-webkit-overflow-scrolling:touch;padding:12px}
+  .chat-header{padding:10px 12px;flex-shrink:0}
+  .chat-input-bar{padding:10px 12px;flex-shrink:0}
+  #msg-input{font-size:16px}
   #open-sidebar-btn{display:flex !important}
-  .chat-header{padding:12px 16px;gap:10px}
-  #chat-name{font-size:.95rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #call-btn, .call-btn{padding:8px 12px !important;font-size:.78rem !important;border-radius:8px !important;white-space:nowrap}
-  .call-btns{gap:6px}
-  .chat-input-bar{padding:10px 12px;gap:8px}
-  #msg-input{padding:10px 14px;font-size:.9rem}
-  .send-btn{width:42px;height:42px;border-radius:10px}
-  #messages-box{padding:12px 14px}
+  .auth-card{margin:16px;padding:28px 20px}
 }
 </style>
 </head>
@@ -289,7 +285,26 @@ function enterApp(){
   document.getElementById("my-avatar").textContent=av(myName);
   document.getElementById("my-avatar").style.background=col(myId);
   showScreen("app-screen");
+  askNotifPermission();
   loadUsers();
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────
+function askNotifPermission(){
+  if("Notification" in window && Notification.permission === "default"){
+    Notification.requestPermission();
+  }
+}
+
+function sendNotif(title, body, onClick){
+  if(!("Notification" in window)) return;
+  if(Notification.permission !== "granted") return;
+  const n = new Notification(title, {
+    body, icon: "https://emoji.aranja.com/static/emoji-data/img-apple-160/26a1.png",
+    badge: "https://emoji.aranja.com/static/emoji-data/img-apple-160/26a1.png"
+  });
+  if(onClick) n.onclick = onClick;
+  setTimeout(()=>n.close(), 5000);
 }
 
 function loadUsers(){
