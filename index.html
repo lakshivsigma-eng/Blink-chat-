@@ -73,7 +73,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 .send-btn svg{fill:#fff}
 
 /* OVERLAY */
-#overlay{display:none;position:fixed;inset:0;background:#00000077;z-index:9}
+
 #open-btn{display:none;position:fixed;bottom:90px;left:16px;z-index:200;background:var(--accent);border:none;border-radius:50%;width:54px;height:54px;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px #7c6fff66;align-items:center;justify-content:center;color:#fff}
 
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#ff4f6f;color:#fff;padding:12px 24px;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;white-space:nowrap}
@@ -159,7 +159,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
   </div>
 </div>
 
-<div id="overlay" onclick="closeSidebar()"></div>
+
 <button id="open-btn" onclick="toggleSidebar()">👥</button>
 <div id="toast"></div>
 
@@ -266,12 +266,12 @@ function renderUsers(filter){
 
 window.openChat=(uid,name)=>{
   currentChatId=chatId(myId,uid);
-  closeSidebar();
   document.getElementById("chat-nm").textContent=name;
   document.getElementById("chat-av").textContent=av(name);
   document.getElementById("chat-av").style.background=col(uid);
   document.getElementById("chat-placeholder").style.display="none";
   document.getElementById("chat-area").style.display="flex";
+  setTimeout(closeSidebar, 100);
   if(chatListener)off(chatListener);
   lastMsgCount=0;
   const msgsRef=query(ref(db,"chats/"+currentChatId+"/messages"),orderByChild("ts"),limitToLast(100));
