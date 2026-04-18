@@ -80,10 +80,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:640px){
-  #sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:82vw}
+  #sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:82vw;z-index:50}
   #sidebar.open{transform:translateX(0)}
   #open-btn{display:flex}
-  #main{width:100vw}
+  #main{width:100vw;z-index:1}
+  .user-item{min-height:60px;padding:14px 12px}
 }
 </style>
 </head>
@@ -265,13 +266,14 @@ function renderUsers(filter){
 }
 
 window.openChat=(uid,name)=>{
+  // Force close sidebar immediately on mobile
+  document.getElementById('sidebar').classList.remove('open');
   currentChatId=chatId(myId,uid);
   document.getElementById("chat-nm").textContent=name;
   document.getElementById("chat-av").textContent=av(name);
   document.getElementById("chat-av").style.background=col(uid);
   document.getElementById("chat-placeholder").style.display="none";
   document.getElementById("chat-area").style.display="flex";
-  setTimeout(closeSidebar, 100);
   if(chatListener)off(chatListener);
   lastMsgCount=0;
   const msgsRef=query(ref(db,"chats/"+currentChatId+"/messages"),orderByChild("ts"),limitToLast(100));
