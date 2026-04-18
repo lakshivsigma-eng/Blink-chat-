@@ -257,7 +257,7 @@ function renderUsers(filter){
   const filtered=filter?allUsers.filter(u=>u.name.toLowerCase().includes(filter)):allUsers;
   if(!filtered.length){list.innerHTML=`<div class="empty">${allUsers.length===0?"No one else here yet!":"No users found"}</div>`;return;}
   list.innerHTML=filtered.map(u=>`
-    <div class="user-item" onclick="openChat('${u.uid}','${esc(u.name)}')">
+    <div class="user-item" onclick="openChat('${u.uid}','${esc(u.name)}')" ontouchend="event.preventDefault();openChat('${u.uid}','${esc(u.name)}')">
       <div class="av" style="background:${col(u.uid)}">${av(u.name)}</div>
       <div class="u-info"><div class="u-name">${esc(u.name)}</div></div>
       <div class="dot ${u.online?"on":""}"></div>
