@@ -255,6 +255,7 @@ function enterApp(){
   document.getElementById("my-av").style.background=col(myId);
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
+  startHeartbeat();
   // Safari fix - retry if fails
   let usersLoaded = false;
   setTimeout(()=>{ 
@@ -279,8 +280,8 @@ function renderUsers(filter){
   list.innerHTML=filtered.map(u=>`
     <div class="user-item" onclick="openChat('${u.uid}','${esc(u.name)}')" ontouchend="event.preventDefault();openChat('${u.uid}','${esc(u.name)}')">
       <div class="av" style="background:${col(u.uid)}">${av(u.name)}</div>
-      <div class="u-info"><div class="u-name">${esc(u.name)}</div><div style="font-size:.72rem;color:var(--text2)">${u.online?"🟢 Online":u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div></div>
-      <div class="dot ${u.online?"on":""}"></div>
+      <div class="u-info"><div class="u-name">${esc(u.name)}</div><div style="font-size:.72rem;color:var(--text2)">${isOnline(u)?"🟢 Online":u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div></div>
+      <div class="dot ${isOnline(u)?"on":""}"></div>
     </div>`).join("");
 }
 
@@ -359,6 +360,21 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   }
 });
+
+// Update lastSeen every 30 seconds to show active
+let heartbeat = null;
+function startHeartbeat(){
+  if(heartbeat) clearInterval(heartbeat);
+  heartbeat = setInterval(()=>{
+    if(myId) update(ref(db,"users/"+myId),{lastSeen:Date.now(), online:true});
+  }, 30000);
+}
+
+// Consider someone online if lastSeen < 2 minutes ago
+function isOnline(u){
+  if(!u.lastSeen) return false;
+  return Date.now() - u.lastSeen < 120000;
+}
 
 function listenTyping(){
   onValue(ref(db,'typing/'+currentChatId),snap=>{
