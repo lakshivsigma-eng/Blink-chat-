@@ -4,94 +4,106 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Blink Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d0d14;--surface:#13131f;--surface2:#1c1c2e;--border:#252538;--accent:#7c6fff;--accent2:#ff6fb0;--text:#e2e2f0;--text2:#7878a0;--green:#3effa0}
 html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;background:var(--bg);color:var(--text)}
+.screen{display:none;position:fixed;inset:0}.screen.active{display:flex}
 
-/* SCREENS */
-.screen{display:none;position:fixed;inset:0}
-.screen.active{display:flex}
-
-/* GATE */
-#gate-screen{align-items:center;justify-content:center;background:var(--bg);flex-direction:column}
-.gate-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 30px;width:90%;max-width:380px;text-align:center}
+/* GATE & AUTH */
+#gate-screen,#auth-screen{align-items:center;justify-content:center;background:var(--bg);flex-direction:column}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 30px;width:90%;max-width:380px;text-align:center}
 .logo{font-size:2rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
 .sub{color:var(--text2);font-size:.85rem;margin-bottom:28px}
-.big-input{width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:14px;color:var(--text);font-family:'Syne',sans-serif;font-size:1.1rem;text-align:center;outline:none;letter-spacing:3px;margin-bottom:10px}
+.big-input{width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:14px;color:var(--text);font-family:'Syne',sans-serif;font-size:1.1rem;text-align:center;outline:none;margin-bottom:10px}
 .big-input:focus{border-color:var(--accent)}
 .err{color:#ff4f6f;font-size:.82rem;min-height:18px;margin-bottom:10px}
 .btn{width:100%;background:linear-gradient(135deg,var(--accent),#a06fff);border:none;border-radius:12px;padding:15px;color:#fff;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;cursor:pointer}
 
-/* AUTH */
-#auth-screen{align-items:center;justify-content:center;background:var(--bg);flex-direction:column}
-
 /* APP */
 #app-screen{flex-direction:row}
-
-/* SIDEBAR */
 #sidebar{width:280px;min-width:280px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100%;transition:transform .25s;z-index:10}
-.sid-top{padding:16px;border-bottom:1px solid var(--border)}
-.brand{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
-.profile{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sid-top{padding:14px;border-bottom:1px solid var(--border)}
+.brand{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.profile{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:.9rem;flex-shrink:0}
 .av-name{flex:1;overflow:hidden}
 .av-label{font-size:.7rem;color:var(--text2)}
 .av-val{font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .leave-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.75rem;padding:5px 10px;cursor:pointer;white-space:nowrap}
-.search{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:.9rem;outline:none}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:2px}
+.tab{flex:1;background:none;border:none;border-radius:8px;padding:8px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
+.tab.active{background:var(--surface2);color:var(--accent)}
+.tab-panel{display:none;flex-direction:column;flex:1;overflow:hidden}
+.tab-panel.active{display:flex}
+
+.search-wrap{padding:10px 14px;border-bottom:1px solid var(--border)}
+.search{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:.9rem;outline:none}
 .search:focus{border-color:var(--accent)}
-.search-wrap{padding:10px 16px;border-bottom:1px solid var(--border)}
-#users-list{flex:1;overflow-y:auto;padding:8px}
-.user-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;transition:background .15s}
-.user-item:hover,.user-item:active{background:var(--surface2)}
-.u-info{flex:1;overflow:hidden}
-.u-name{font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--border);flex-shrink:0}
-.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.list{flex:1;overflow-y:auto;padding:8px}
+.item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;cursor:pointer;transition:background .15s;min-height:56px}
+.item:hover,.item:active{background:var(--surface2)}
+.item-info{flex:1;overflow:hidden}
+.item-name{font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-sub{font-size:.72rem;color:var(--text2)}
 .empty{text-align:center;color:var(--text2);padding:24px;font-size:.85rem}
-.sid-bot{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
-.del-btn{background:none;border:1px solid #ff4f6f;border-radius:10px;color:#ff4f6f;font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:10px;cursor:pointer}
-.admin-btn{background:none;border:none;color:#ffffff10;font-size:.6rem;font-family:monospace;cursor:pointer;padding:4px;transition:color .3s}
+.sid-bot{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.del-btn{background:none;border:1px solid #ff4f6f;border-radius:10px;color:#ff4f6f;font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer}
+.admin-btn{background:none;border:none;color:#ffffff10;font-size:.6rem;font-family:monospace;cursor:pointer;padding:3px;transition:color .3s}
 .admin-btn:hover{color:#ff4f6f}
 
+/* GROUP BADGE */
+.grp-av{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:1.1rem;flex-shrink:0}
+
 /* MAIN */
-#main{flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;position:relative}
+#main{flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden}
 #chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text2);gap:10px}
 #chat-area{display:none;flex-direction:column;height:100%}
 .chat-top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .menu-btn{background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:42px;height:42px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text)}
 #chat-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0}
+#chat-av.grp{border-radius:10px}
 #chat-nm{font-weight:700;font-size:1rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#chat-sub{font-size:.72rem;color:var(--text2)}
 .call-btn-main{background:linear-gradient(135deg,#3effa0,#00c97a);border:none;border-radius:10px;padding:10px 14px;color:#000;font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
 #msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:6px}
+.typing{color:var(--text2);font-size:.78rem;font-family:monospace;padding:4px 16px;min-height:20px;font-style:italic}
+.typing span{display:inline-block;animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:0}40%{opacity:1}}
 .input-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
 #msg-in{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:16px;outline:none}
 #msg-in:focus{border-color:var(--accent)}
 .send-btn{background:linear-gradient(135deg,var(--accent),#a06fff);border:none;border-radius:12px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .send-btn svg{fill:#fff}
 
-/* OVERLAY */
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:#00000088;z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:90%;max-width:400px}
+.modal h3{font-size:1.1rem;font-weight:700;margin-bottom:16px}
+.modal input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:.95rem;outline:none;margin-bottom:12px}
+.modal input:focus{border-color:var(--accent)}
+.modal-btns{display:flex;gap:10px;margin-top:4px}
+.modal-btns button{flex:1;padding:11px;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem}
+.modal-cancel{background:var(--surface2);color:var(--text)}
+.modal-ok{background:linear-gradient(135deg,var(--accent),#a06fff);color:#fff}
 
-#open-btn{display:none;position:fixed;bottom:90px;left:16px;z-index:200;background:var(--accent);border:none;border-radius:50%;width:54px;height:54px;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px #7c6fff66;align-items:center;justify-content:center;color:#fff}
-
-.typing{color:var(--text2);font-size:.78rem;font-family:monospace;padding:4px 16px;min-height:20px;font-style:italic}
-.typing span{display:inline-block;animation:blink 1.2s infinite}
-.typing span:nth-child(2){animation-delay:.2s}
-.typing span:nth-child(3){animation-delay:.4s}
-@keyframes blink{0%,80%,100%{opacity:0}40%{opacity:1}}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#ff4f6f;color:#fff;padding:12px 24px;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#open-btn{display:none;position:fixed;bottom:90px;left:16px;z-index:200;background:var(--accent);border:none;border-radius:50%;width:54px;height:54px;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px #7c6fff66;align-items:center;justify-content:center;color:#fff}
 
 @media(max-width:640px){
   #sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:82vw;z-index:50}
   #sidebar.open{transform:translateX(0)}
   #open-btn{display:flex}
-  #main{width:100vw;z-index:1}
-  .user-item{min-height:60px;padding:14px 12px}
+  #main{width:100vw}
+  .item{min-height:60px;padding:12px}
 }
 </style>
 </head>
@@ -99,7 +111,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 
 <!-- GATE -->
 <div id="gate-screen" class="screen active">
-  <div class="gate-card">
+  <div class="card">
     <div class="logo">Blink ⚡</div>
     <div class="sub">// enter password</div>
     <input id="gate-in" class="big-input" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')checkGate()">
@@ -110,12 +122,25 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 
 <!-- AUTH -->
 <div id="auth-screen" class="screen">
-  <div class="gate-card">
+  <div class="card">
     <div class="logo">Blink ⚡</div>
     <div class="sub">// what's your name?</div>
     <input id="name-in" class="big-input" type="text" placeholder="Your name" maxlength="20" style="letter-spacing:0" onkeydown="if(event.key==='Enter')joinChat()">
     <div style="height:10px"></div>
     <button class="btn" onclick="joinChat()">Join →</button>
+  </div>
+</div>
+
+<!-- CREATE GROUP MODAL -->
+<div class="modal-bg" id="create-grp-modal">
+  <div class="modal">
+    <h3>✨ Create a Group</h3>
+    <input id="grp-name-in" type="text" placeholder="Group name" maxlength="30">
+    <input id="grp-desc-in" type="text" placeholder="Description (optional)" maxlength="60">
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('create-grp-modal')">Cancel</button>
+      <button class="modal-ok" onclick="createGroup()">Create</button>
+    </div>
   </div>
 </div>
 
@@ -132,11 +157,29 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
         </div>
         <button class="leave-btn" onclick="leaveChat()">Leave</button>
       </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('people')">👤 People</button>
+        <button class="tab" onclick="switchTab('groups')">👥 Groups</button>
+      </div>
     </div>
-    <div class="search-wrap">
-      <input class="search" id="search-in" type="text" placeholder="Search people…" oninput="filterUsers(this.value)">
+
+    <!-- PEOPLE TAB -->
+    <div class="tab-panel active" id="tab-people">
+      <div class="search-wrap">
+        <input class="search" type="text" placeholder="Search people…" oninput="filterUsers(this.value)">
+      </div>
+      <div class="list" id="users-list"><div class="empty">Loading…</div></div>
     </div>
-    <div id="users-list"><div class="empty">Loading…</div></div>
+
+    <!-- GROUPS TAB -->
+    <div class="tab-panel" id="tab-groups">
+      <div class="search-wrap" style="display:flex;gap:8px;align-items:center">
+        <input class="search" style="flex:1" type="text" placeholder="Search groups…" oninput="filterGroups(this.value)">
+        <button onclick="openModal('create-grp-modal')" style="background:var(--accent);border:none;border-radius:10px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;flex-shrink:0;">+</button>
+      </div>
+      <div class="list" id="groups-list"><div class="empty">No groups yet</div></div>
+    </div>
+
     <div class="sid-bot">
       <button class="del-btn" onclick="deleteMyAccount()">🗑 Delete My Account</button>
       <button class="admin-btn" onclick="deleteAllData()">⚙ admin</button>
@@ -147,14 +190,17 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
     <div id="chat-placeholder">
       <div style="font-size:2.5rem;opacity:.3">💬</div>
       <div style="font-weight:600">Pick someone to chat with</div>
-      <div style="font-size:.82rem;color:var(--text2)">tap 👥 to see friends</div>
+      <div style="font-size:.82rem;color:var(--text2)">tap 👥 below to open</div>
     </div>
     <div id="chat-area">
       <div class="chat-top">
         <button class="menu-btn" onclick="toggleSidebar()">☰</button>
         <div id="chat-av">?</div>
-        <div id="chat-nm">...</div>
-        <button class="call-btn-main" onclick="startVideoCall()">📹 Call</button>
+        <div style="flex:1;overflow:hidden">
+          <div id="chat-nm">...</div>
+          <div id="chat-sub"></div>
+        </div>
+        <button class="call-btn-main" onclick="startVideoCall()">📹</button>
       </div>
       <div id="msgs"></div>
       <div class="typing" id="typing-indicator"></div>
@@ -171,13 +217,12 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
   </div>
 </div>
 
-
 <button id="open-btn" onclick="toggleSidebar()">👥</button>
 <div id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getDatabase, ref, set, onValue, off, push, query, orderByChild, limitToLast, update, onDisconnect } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+import { getDatabase, ref, set, get, onValue, off, push, query, orderByChild, limitToLast, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAcmevlI-FqPB_biNZoPvLH2iyxTYoK3lc",
@@ -192,16 +237,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let myId=null, myName=null, currentChatId=null, chatListener=null, allUsers=[], lastMsgCount=0;
+let myId=null,myName=null,currentChatId=null,currentChatType=null,chatListener=null,typingListener=null,allUsers=[],allGroups=[],lastMsgCount=0;
 
+// ── HELPERS ────────────────────────────────────────────────────────────────
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 function av(n){return n?n[0].toUpperCase():"?"}
 function col(id){const c=["#7c6fff","#ff6fb0","#4fffb0","#ffb84f","#4fc3ff","#ff4f6f","#b4ff4f"];let h=0;for(let i=0;i<id.length;i++)h=id.charCodeAt(i)+((h<<5)-h);return c[Math.abs(h)%c.length]}
-function timeAgo(ts){if(!ts)return"";const d=Date.now()-ts;if(d<60000)return"just now";if(d<3600000)return Math.floor(d/60000)+"m ago";return Math.floor(d/3600000)+"h ago"}
+function timeAgo(ts){if(!ts)return"";const d=Date.now()-ts;if(d<60000)return"just now";if(d<3600000)return Math.floor(d/60000)+"m ago";if(d<86400000)return Math.floor(d/3600000)+"h ago";return new Date(ts).toLocaleDateString()}
 function chatId(a,b){return[a,b].sort().join("__")}
 function showToast(msg){const e=document.getElementById("toast");e.textContent=msg;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),3500)}
 function showScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active")}
+function notify(title,body){if(Notification&&Notification.permission==="granted"&&document.hidden){new Notification(title,{body})}}
+window.openModal=id=>document.getElementById(id).classList.add("open");
+window.closeModal=id=>document.getElementById(id).classList.remove("open");
 
+// ── GATE ───────────────────────────────────────────────────────────────────
 window.checkGate=()=>{
   if(document.getElementById("gate-in").value==="1234"){
     showScreen("auth-screen");
@@ -213,6 +263,7 @@ window.checkGate=()=>{
   }
 };
 
+// ── AUTH ───────────────────────────────────────────────────────────────────
 window.joinChat=async()=>{
   const name=document.getElementById("name-in").value.trim();
   if(!name)return showToast("Enter your name!");
@@ -220,12 +271,14 @@ window.joinChat=async()=>{
   myName=name;
   localStorage.setItem("blink_uid",myId);
   localStorage.setItem("blink_name",name);
-  await set(ref(db,"users/"+myId),{name,uid:myId,online:true,lastSeen:Date.now()});
+  const userRef=ref(db,"users/"+myId);
+  await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now()});
+  onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
   enterApp();
 };
 
 window.leaveChat=async()=>{
-  if(myId)await update(ref(db,"users/"+myId),{online:false});
+  if(myId)await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
   if(chatListener){off(chatListener);chatListener=null;}
   myId=null;myName=null;
   showScreen("auth-screen");
@@ -234,37 +287,41 @@ window.leaveChat=async()=>{
 window.deleteMyAccount=async()=>{
   if(!confirm("Delete your account permanently?"))return;
   await set(ref(db,"users/"+myId),null);
-  localStorage.removeItem("blink_uid");
-  localStorage.removeItem("blink_name");
+  localStorage.removeItem("blink_uid");localStorage.removeItem("blink_name");
   location.reload();
 };
 
 window.deleteAllData=async()=>{
-  if(!confirm("Delete ALL users and chats?"))return;
+  if(!confirm("Delete ALL data?"))return;
   if(!confirm("100% sure?"))return;
-  await set(ref(db,"users"),null);
-  await set(ref(db,"chats"),null);
-  localStorage.removeItem("blink_uid");
-  localStorage.removeItem("blink_name");
-  location.reload();
+  await set(ref(db,"users"),null);await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
+  localStorage.clear();location.reload();
 };
 
+// ── ENTER APP ──────────────────────────────────────────────────────────────
 function enterApp(){
   document.getElementById("my-nm").textContent=myName;
   document.getElementById("my-av").textContent=av(myName);
   document.getElementById("my-av").style.background=col(myId);
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
-  startHeartbeat();
-  // Safari fix - retry if fails
-  let usersLoaded = false;
-  setTimeout(()=>{ 
-    if(!usersLoaded) { 
-      document.getElementById("users-list").innerHTML='<div class="empty">Could not load.<br><br><button onclick="location.reload()" style="background:var(--accent);border:none;border-radius:8px;padding:10px 20px;color:#fff;font-family:Syne,sans-serif;font-weight:700;cursor:pointer;font-size:1rem;">🔄 Tap to Retry</button></div>'; 
-    } 
-  }, 6000);
+  loadUsers();
+  loadGroups();
+  listenGroupRequests();
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+window.switchTab=tab=>{
+  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups"][i]===tab)});
+  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups"][i]==="tab-"+tab)});
+};
+
+// ── USERS ──────────────────────────────────────────────────────────────────
+function loadUsers(){
+  let loaded=false;
+  setTimeout(()=>{if(!loaded)document.getElementById("users-list").innerHTML='<div class="empty">Could not load. Check internet.</div>'},6000);
   onValue(ref(db,"users"),snap=>{
-    usersLoaded = true;
+    loaded=true;
     const data=snap.val()||{};
     allUsers=Object.values(data).filter(u=>u&&u.uid&&u.name&&u.uid!==myId);
     renderUsers("");
@@ -275,54 +332,185 @@ window.filterUsers=val=>renderUsers(val.toLowerCase());
 
 function renderUsers(filter){
   const list=document.getElementById("users-list");
-  const filtered=filter?allUsers.filter(u=>u.name.toLowerCase().includes(filter)):allUsers;
-  if(!filtered.length){list.innerHTML=`<div class="empty">${allUsers.length===0?"No one else here yet!":"No users found"}</div>`;return;}
-  list.innerHTML=filtered.map(u=>`
-    <div class="user-item" onclick="openChat('${u.uid}','${esc(u.name)}')" ontouchend="event.preventDefault();openChat('${u.uid}','${esc(u.name)}')">
+  const f=filter?allUsers.filter(u=>u.name.toLowerCase().includes(filter)):allUsers;
+  if(!f.length){list.innerHTML=`<div class="empty">${allUsers.length===0?"No one here yet!":"No users found"}</div>`;return;}
+  list.innerHTML=f.map(u=>`
+    <div class="item" ontouchend="event.preventDefault();openDM('${u.uid}','${esc(u.name)}')" onclick="openDM('${u.uid}','${esc(u.name)}')">
       <div class="av" style="background:${col(u.uid)}">${av(u.name)}</div>
-      <div class="u-info"><div class="u-name">${esc(u.name)}</div><div style="font-size:.72rem;color:var(--text2)">${u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div></div>
-
+      <div class="item-info">
+        <div class="item-name">${esc(u.name)}</div>
+        <div class="item-sub">${u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div>
+      </div>
     </div>`).join("");
 }
 
-window.openChat=(uid,name)=>{
-  // Force close sidebar immediately on mobile
-  document.getElementById('sidebar').classList.remove('open');
+// ── GROUPS ─────────────────────────────────────────────────────────────────
+function loadGroups(){
+  onValue(ref(db,"groups"),snap=>{
+    const data=snap.val()||{};
+    allGroups=Object.entries(data).map(([k,v])=>({...v,gid:k}));
+    renderGroups("");
+  });
+}
+
+window.filterGroups=val=>renderGroups(val.toLowerCase());
+
+function renderGroups(filter){
+  const list=document.getElementById("groups-list");
+  const f=filter?allGroups.filter(g=>g.name&&g.name.toLowerCase().includes(filter)):allGroups;
+  if(!f.length){list.innerHTML='<div class="empty">No groups yet.<br>Tap + to create one!</div>';return;}
+  list.innerHTML=f.map(g=>{
+    const isMember=g.members&&g.members[myId];
+    const isOwner=g.owner===myId;
+    const pending=g.requests&&g.requests[myId];
+    return`<div class="item" onclick="${isMember?`openGroup('${g.gid}','${esc(g.name)}',${g.members?Object.keys(g.members).length:0})`:`requestJoin('${g.gid}','${esc(g.name)}')`}">
+      <div class="grp-av" style="background:${col(g.gid)}">${av(g.name)}</div>
+      <div class="item-info">
+        <div class="item-name">${esc(g.name)}</div>
+        <div class="item-sub">${g.desc||""} · ${g.members?Object.keys(g.members).length:0} members</div>
+      </div>
+      <div style="font-size:.75rem;color:${isMember?"#3effa0":pending?"#ffb84f":"var(--text2)"};flex-shrink:0">${isOwner?"👑":isMember?"✓":pending?"Pending":"Join"}</div>
+    </div>`;
+  }).join("");
+}
+
+window.createGroup=async()=>{
+  const name=document.getElementById("grp-name-in").value.trim();
+  const desc=document.getElementById("grp-desc-in").value.trim();
+  if(!name)return showToast("Enter a group name!");
+  const gid=push(ref(db,"groups")).key;
+  await set(ref(db,"groups/"+gid),{
+    name,desc,owner:myId,ownerName:myName,
+    members:{[myId]:{name:myName,uid:myId,joinedAt:Date.now()}},
+    createdAt:Date.now()
+  });
+  closeModal("create-grp-modal");
+  document.getElementById("grp-name-in").value="";
+  document.getElementById("grp-desc-in").value="";
+  showToast("Group created!");
+  switchTab("groups");
+};
+
+window.requestJoin=async(gid,gname)=>{
+  const g=allGroups.find(x=>x.gid===gid);
+  if(!g)return;
+  if(g.requests&&g.requests[myId])return showToast("Already requested!");
+  await update(ref(db,"groups/"+gid+"/requests/"+myId),{name:myName,uid:myId,ts:Date.now()});
+  // Notify owner
+  await push(ref(db,"notifications/"+g.owner),{type:"join_request",groupId:gid,groupName:gname,fromId:myId,fromName:myName,ts:Date.now()});
+  showToast("Request sent to group owner!");
+};
+
+// Listen for join requests (owner only)
+function listenGroupRequests(){
+  onValue(ref(db,"notifications/"+myId),snap=>{
+    const data=snap.val()||{};
+    Object.entries(data).forEach(([nid,n])=>{
+      if(n.type==="join_request"&&!n.seen){
+        showJoinRequest(nid,n);
+      }
+    });
+  });
+}
+
+function showJoinRequest(nid,n){
+  if(confirm(`👋 ${n.fromName} wants to join "${n.groupName}"!\n\nAccept?`)){
+    // Add member
+    update(ref(db,"groups/"+n.groupId+"/members/"+n.fromId),{name:n.fromName,uid:n.fromId,joinedAt:Date.now()});
+    // Remove request
+    set(ref(db,"groups/"+n.groupId+"/requests/"+n.fromId),null);
+    // Notify requester
+    push(ref(db,"notifications/"+n.fromId),{type:"join_accepted",groupId:n.groupId,groupName:n.groupName,ts:Date.now()});
+    showToast(n.fromName+" added to group!");
+  } else {
+    set(ref(db,"groups/"+n.groupId+"/requests/"+n.fromId),null);
+  }
+  // Mark notification as seen
+  update(ref(db,"notifications/"+myId+"/"+nid),{seen:true});
+}
+
+// Listen for accepted notifications
+onValue(ref(db,"notifications/"+myId),snap=>{
+  if(!myId)return;
+  const data=snap.val()||{};
+  Object.entries(data).forEach(([nid,n])=>{
+    if(n.type==="join_accepted"&&!n.seen){
+      showToast("✅ You were accepted into "+n.groupName+"!");
+      update(ref(db,"notifications/"+myId+"/"+nid),{seen:true});
+    }
+  });
+});
+
+// ── OPEN DM ────────────────────────────────────────────────────────────────
+window.openDM=(uid,name)=>{
+  document.getElementById("sidebar").classList.remove("open");
   currentChatId=chatId(myId,uid);
+  currentChatType="dm";
   document.getElementById("chat-nm").textContent=name;
-  document.getElementById("chat-av").textContent=av(name);
-  document.getElementById("chat-av").style.background=col(uid);
+  document.getElementById("chat-sub").textContent="";
+  const cavEl=document.getElementById("chat-av");
+  cavEl.textContent=av(name);cavEl.style.background=col(uid);
+  cavEl.className="";
   document.getElementById("chat-placeholder").style.display="none";
   document.getElementById("chat-area").style.display="flex";
+  openChat();
+};
+
+// ── OPEN GROUP ─────────────────────────────────────────────────────────────
+window.openGroup=(gid,name,count)=>{
+  document.getElementById("sidebar").classList.remove("open");
+  currentChatId=gid;
+  currentChatType="group";
+  document.getElementById("chat-nm").textContent=name;
+  document.getElementById("chat-sub").textContent=count+" members";
+  const cavEl=document.getElementById("chat-av");
+  cavEl.textContent=av(name);cavEl.style.background=col(gid);
+  cavEl.className="grp";
+  document.getElementById("chat-placeholder").style.display="none";
+  document.getElementById("chat-area").style.display="flex";
+  openChat();
+};
+
+// ── OPEN CHAT ──────────────────────────────────────────────────────────────
+function openChat(){
   if(chatListener)off(chatListener);
+  if(typingListener)off(typingListener);
   lastMsgCount=0;
-  listenTyping();
-  const msgsRef=query(ref(db,"chats/"+currentChatId+"/messages"),orderByChild("ts"),limitToLast(100));
+  const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages":"chats/"+currentChatId+"/messages";
+  const msgsRef=query(ref(db,chatPath),orderByChild("ts"),limitToLast(100));
   chatListener=onValue(msgsRef,snap=>{
     const raw=snap.val()||{};
     const msgs=Object.entries(raw).map(([k,v])=>({...v,_key:k})).sort((a,b)=>a.ts-b.ts);
-    // Notifications for new messages
     if(msgs.length>lastMsgCount&&lastMsgCount>0){
       const m=msgs[msgs.length-1];
       if(m.uid!==myId){
         if(m.text&&m.text.startsWith("https://meet.no42.org")){
-          if(confirm("📹 "+( m.name||"Friend")+" is calling! Join now?"))window.open(m.text,"_blank");
-        } else if(document.hidden&&Notification.permission==="granted"){
-          new Notification("💬 "+(m.name||"Friend"),{body:m.text});
+          if(confirm("📹 "+(m.name||"Friend")+" is calling! Join now?"))window.open(m.text,"_blank");
+        } else {
+          notify("💬 "+(m.name||"Friend"),m.text);
         }
       }
     }
     lastMsgCount=msgs.length;
     renderMsgs(msgs);
   });
-};
+  // Typing
+  const typPath=currentChatType==="group"?"groups/"+currentChatId+"/typing":"typing/"+currentChatId;
+  typingListener=onValue(ref(db,typPath),snap=>{
+    const data=snap.val()||{};
+    const typers=Object.values(data).filter(t=>t&&t.name!==myName&&Date.now()-t.ts<3000);
+    const el=document.getElementById("typing-indicator");
+    if(el)el.innerHTML=typers.length?`${typers[0].name} is typing<span>.</span><span>.</span><span>.</span>`:"";
+  });
+}
 
+// ── RENDER MESSAGES ────────────────────────────────────────────────────────
 function renderMsgs(msgs){
   const box=document.getElementById("msgs");
   let html="",lastUid=null;
   for(const m of msgs){
     const mine=m.uid===myId;
-    const showName=m.uid!==lastUid;lastUid=m.uid;
+    const showName=m.uid!==lastUid||currentChatType==="group";lastUid=m.uid;
     const row=mine?"display:flex;justify-content:flex-end;margin:2px 0":"display:flex;justify-content:flex-start;margin:2px 0";
     const bubble=mine
       ?"background:#111;color:#fff;border:2px solid #444;border-radius:18px;border-bottom-right-radius:4px;padding:10px 16px;max-width:75%"
@@ -330,74 +518,44 @@ function renderMsgs(msgs){
     const txt=mine?"color:#fff;word-break:break-word":"color:#000;font-weight:600;word-break:break-word";
     const time=mine?"font-size:.68rem;margin-top:4px;color:#aaa;text-align:right;font-family:monospace":"font-size:.68rem;margin-top:4px;color:#777;text-align:right;font-family:monospace";
     const ns=mine?"text-align:right;font-size:.68rem;font-weight:700;color:#7c6fff;margin-bottom:2px;font-family:monospace;text-transform:uppercase":"text-align:left;font-size:.68rem;font-weight:700;color:#ff6fb0;margin-bottom:2px;font-family:monospace;text-transform:uppercase";
-    let msgContent='';
-    if(m.text&&m.text.startsWith('__IMG__')){
+    let msgContent="";
+    if(m.text&&m.text.startsWith("__IMG__")){
       msgContent=`<img src="${m.text.slice(7)}" style="max-width:200px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.text.slice(7)}','_blank')">`;
-    } else if(m.text&&m.text.startsWith('https://')){
+    } else if(m.text&&m.text.startsWith("https://")){
       msgContent=`<a href="${m.text}" target="_blank" style="color:#3effa0;word-break:break-all;">${m.text}</a><br><button onclick="window.open('${m.text}','_blank')" style="margin-top:8px;background:#3effa0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;color:#000;font-size:1rem;">👆 Join Call</button>`;
     } else {
       msgContent=esc(m.text);
     }
-    const deleteBtn=mine&&m._key?`<div onclick="deleteMsg('${m._key}')" style="font-size:.7rem;color:#ff4f6f;cursor:pointer;margin-top:4px;text-align:right;">🗑 delete</div>`:'';
-    html+=`<div style="margin-bottom:4px">${showName?`<div style="${ns}">${mine?"You":esc(m.name||"?")}</div>`:""}<div style="${row}"><div style="${bubble}"><div style="${txt}">${msgContent}</div><div style="${time}">${timeAgo(m.ts)}</div>${deleteBtn}</div></div></div>`;
+    const delBtn=mine?`<div onclick="deleteMsg('${m._key}')" style="font-size:.7rem;color:#ff4f6f;cursor:pointer;margin-top:4px;text-align:right;">🗑 delete</div>`:"";
+    const nameLabel=showName&&!mine?`<div style="${ns}">${esc(m.name||"?")}</div>`:(showName&&mine?`<div style="${ns}">You</div>`:"");
+    html+=`<div style="margin-bottom:4px">${nameLabel}<div style="${row}"><div style="${bubble}"><div style="${txt}">${msgContent}</div><div style="${time}">${timeAgo(m.ts)}</div>${delBtn}</div></div></div>`;
   }
   box.innerHTML=html;
   box.scrollTop=box.scrollHeight;
 }
 
-// ── TYPING INDICATOR ──────────────────────────────────────────────────────
-let typingTimeout=null;
-document.addEventListener('DOMContentLoaded',()=>{
-  const input=document.getElementById('msg-in');
-  if(input){
-    input.addEventListener('input',()=>{
-      if(!currentChatId||!myId) return;
-      update(ref(db,'typing/'+currentChatId+'/'+myId),{name:myName,ts:Date.now()});
-      clearTimeout(typingTimeout);
-      typingTimeout=setTimeout(()=>{
-        set(ref(db,'typing/'+currentChatId+'/'+myId),null);
-      },2000);
-    });
-  }
-});
-
-// Update lastSeen every 30 seconds to show active
-let heartbeat = null;
-function startHeartbeat(){
-  if(heartbeat) clearInterval(heartbeat);
-  heartbeat = setInterval(()=>{
-    if(myId) update(ref(db,"users/"+myId),{lastSeen:Date.now(), online:true});
-  }, 30000);
-}
-
-// Consider someone online if lastSeen < 2 minutes ago
-function isOnline(u){
-  if(!u.lastSeen) return false;
-  return Date.now() - u.lastSeen < 120000;
-}
-
-function listenTyping(){
-  onValue(ref(db,'typing/'+currentChatId),snap=>{
-    const data=snap.val()||{};
-    const typers=Object.values(data).filter(t=>t&&t.name&&t.name!==myName&&Date.now()-t.ts<3000);
-    const el=document.getElementById('typing-indicator');
-    if(el){
-      el.innerHTML=typers.length?`${typers[0].name} is typing<span>.</span><span>.</span><span>.</span>`:'';
-    }
-  });
-}
+// ── SEND MESSAGE ───────────────────────────────────────────────────────────
+window.sendMessage=async()=>{
+  const input=document.getElementById("msg-in");
+  const text=input.value.trim();
+  if(!text||!currentChatId)return;
+  input.value="";
+  const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages":"chats/"+currentChatId+"/messages";
+  await push(ref(db,chatPath),{text,uid:myId,name:myName,ts:Date.now()});
+  // Clear typing
+  const typPath=currentChatType==="group"?"groups/"+currentChatId+"/typing/"+myId:"typing/"+currentChatId+"/"+myId;
+  set(ref(db,typPath),null);
+};
 
 // ── SEND PHOTO ─────────────────────────────────────────────────────────────
 window.sendPhoto=async(input)=>{
-  if(!input.files||!input.files[0]||!currentChatId) return;
+  if(!input.files||!input.files[0]||!currentChatId)return;
   const file=input.files[0];
-  if(file.size>2*1024*1024) return showToast("Image too large! Max 2MB");
+  if(file.size>2*1024*1024)return showToast("Image too large! Max 2MB");
   const reader=new FileReader();
   reader.onload=async(e)=>{
-    await push(ref(db,"chats/"+currentChatId+"/messages"),{
-      text:"__IMG__"+e.target.result,
-      uid:myId,name:myName,ts:Date.now()
-    });
+    const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages":"chats/"+currentChatId+"/messages";
+    await push(ref(db,chatPath),{text:"__IMG__"+e.target.result,uid:myId,name:myName,ts:Date.now()});
   };
   reader.readAsDataURL(file);
   input.value="";
@@ -405,59 +563,55 @@ window.sendPhoto=async(input)=>{
 
 // ── DELETE MESSAGE ─────────────────────────────────────────────────────────
 window.deleteMsg=async(msgKey)=>{
-  if(!confirm("Delete this message?")) return;
-  await set(ref(db,"chats/"+currentChatId+"/messages/"+msgKey),null);
+  if(!confirm("Delete this message?"))return;
+  const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages/"+msgKey:"chats/"+currentChatId+"/messages/"+msgKey;
+  await set(ref(db,chatPath),null);
 };
 
-window.sendMessage=async()=>{
-  const input=document.getElementById("msg-in");
-  const text=input.value.trim();
-  if(!text||!currentChatId)return;
-  input.value="";
-  await push(ref(db,"chats/"+currentChatId+"/messages"),{text,uid:myId,name:myName,ts:Date.now()});
-};
+// ── TYPING ─────────────────────────────────────────────────────────────────
+let typingTimeout=null;
+document.getElementById("msg-in").addEventListener("input",()=>{
+  if(!currentChatId||!myId)return;
+  const typPath=currentChatType==="group"?"groups/"+currentChatId+"/typing/"+myId:"typing/"+currentChatId+"/"+myId;
+  update(ref(db,typPath),{name:myName,ts:Date.now()});
+  clearTimeout(typingTimeout);
+  typingTimeout=setTimeout(()=>set(ref(db,typPath),null),2000);
+});
 
+// ── VIDEO CALL ─────────────────────────────────────────────────────────────
 window.startVideoCall=()=>{
   if(!currentChatId)return showToast("Open a chat first!");
   const room="blink"+currentChatId.replace("__","").substring(0,12);
   const url="https://meet.no42.org/join/"+room;
-  push(ref(db,"chats/"+currentChatId+"/messages"),{text:url,uid:myId,name:myName,ts:Date.now()});
+  const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages":"chats/"+currentChatId+"/messages";
+  push(ref(db,chatPath),{text:url,uid:myId,name:myName,ts:Date.now()});
   window.open(url,"_blank");
 };
 
-window.toggleSidebar=()=>{
-  const s=document.getElementById("sidebar");
-  const o=document.getElementById("overlay");
-  s.classList.toggle("open");
-  o.style.display=s.classList.contains("open")?"block":"none";
-};
-window.closeSidebar=()=>{
-  document.getElementById("sidebar").classList.remove("open");
-  document.getElementById("overlay").style.display="none";
-};
+// ── SIDEBAR ────────────────────────────────────────────────────────────────
+window.toggleSidebar=()=>document.getElementById("sidebar").classList.toggle("open");
+window.closeSidebar=()=>document.getElementById("sidebar").classList.remove("open");
 
-// Set offline when page closes or hides
-window.addEventListener("beforeunload", ()=>{
-  if(myId) navigator.sendBeacon("https://dddd-b82bc-default-rtdb.firebaseio.com/users/"+myId+"/online.json", JSON.stringify(false));
-});
-document.addEventListener("visibilitychange", ()=>{
-  if(!myId) return;
-  if(document.hidden){
-    update(ref(db,"users/"+myId),{online:false, lastSeen:Date.now()});
-  } else {
-    update(ref(db,"users/"+myId),{online:true, lastSeen:Date.now()});
-  }
-});
-
+// ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
 document.getElementById("gate-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.checkGate();});
 document.getElementById("name-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 
-// Auto rejoin
+// ── PAGE VISIBILITY ────────────────────────────────────────────────────────
+document.addEventListener("visibilitychange",()=>{
+  if(!myId)return;
+  update(ref(db,"users/"+myId),{online:!document.hidden,lastSeen:Date.now()});
+});
+
+// ── AUTO REJOIN ────────────────────────────────────────────────────────────
 const sn=localStorage.getItem("blink_name"),si=localStorage.getItem("blink_uid");
-if(sn&&si){myId=si;myName=sn;const uRef=ref(db,"users/"+myId);
+if(sn&&si){
+  myId=si;myName=sn;
+  const uRef=ref(db,"users/"+myId);
   set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
-  onDisconnect(uRef).update({online:false,lastSeen:Date.now()});enterApp();}
+  onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
+  enterApp();
+}
 </script>
 </body>
 </html>
