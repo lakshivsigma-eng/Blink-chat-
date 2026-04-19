@@ -420,6 +420,19 @@ window.closeSidebar=()=>{
   document.getElementById("overlay").style.display="none";
 };
 
+// Set offline when page closes or hides
+window.addEventListener("beforeunload", ()=>{
+  if(myId) navigator.sendBeacon("https://dddd-b82bc-default-rtdb.firebaseio.com/users/"+myId+"/online.json", JSON.stringify(false));
+});
+document.addEventListener("visibilitychange", ()=>{
+  if(!myId) return;
+  if(document.hidden){
+    update(ref(db,"users/"+myId),{online:false, lastSeen:Date.now()});
+  } else {
+    update(ref(db,"users/"+myId),{online:true, lastSeen:Date.now()});
+  }
+});
+
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
 document.getElementById("gate-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.checkGate();});
 document.getElementById("name-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
