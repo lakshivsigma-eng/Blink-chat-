@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Blink Chat</title>
+<title>Blink Chat </title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -308,6 +308,7 @@ function enterApp(){
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
   checkAdminStatus();
+  checkAdminBackup();
   loadUsers();
   loadGroups();
   listenGroupRequests();
@@ -643,17 +644,38 @@ window.adminDeleteAllUsers = async () => {
 
 window.adminShowUsers = async () => {
   const snap = await get(ref(db,"users"));
-  const users = Object.values(snap.val()||{}).filter(u=>u.uid!==myId);
-  if(!users.length) return showToast("No other users!");
+  const users = Object.values(snap.val()||{}).filter(u=>u&&u.uid&&u.name);
+  if(!users.length) return showToast("No users!");
   const panel = document.createElement("div");
   panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:90%;max-width:360px;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
   panel.innerHTML = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">👥 Manage Users</div>` +
-    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px">
-      <div style="flex:1;font-weight:600">${esc(u.name)}</div>
-      <button onclick="adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>
+    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px;cursor:pointer" onclick="adminLoginAs('${u.uid}','${esc(u.name)}')">
+      <div class="av" style="background:${col(u.uid)};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0">${av(u.name)}</div>
+      <div style="flex:1;font-weight:600">${esc(u.name)}${u.uid===myId?'<span style="color:#3effa0;font-size:.7rem;margin-left:6px">(you)</span>':""}</div>
+      ${u.uid!==myId?`<button onclick="event.stopPropagation();adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>`:""}
     </div>`).join("") +
     `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
   document.body.appendChild(panel);
+};
+
+window.adminLoginAs = async (uid, name) => {
+  if(!confirm("Login as "+name+"?
+
+Your original account is saved. Tap '← Back to Admin' to return.")) return;
+  // Save original admin account
+  localStorage.setItem("blink_admin_backup_uid", myId);
+  localStorage.setItem("blink_admin_backup_name", myName);
+  localStorage.setItem("blink_admin","yes");
+  // Set offline for current
+  await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
+  // Switch to new user
+  localStorage.setItem("blink_uid", uid);
+  localStorage.setItem("blink_name", name);
+  // Close all panels
+  document.querySelectorAll("[style*='z-index:600'],[style*='z-index:500']").forEach(el=>el.remove());
+  showToast("Logged in as "+name+"!");
+  // Reload as that user
+  location.reload();
 };
 
 window.adminViewChats = async () => {
@@ -724,6 +746,27 @@ window.adminDeleteUser = async (uid, name) => {
   document.querySelectorAll("[style*='z-index:600']").forEach(el=>el.remove());
   adminShowUsers();
 };
+
+// Add back-to-admin button if we switched accounts
+function checkAdminBackup(){
+  const backupUid = localStorage.getItem("blink_admin_backup_uid");
+  const backupName = localStorage.getItem("blink_admin_backup_name");
+  if(backupUid && backupName){
+    const btn = document.createElement("button");
+    btn.textContent = "← Back to "+backupName;
+    btn.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FFD700,#FFA500);border:none;border-radius:10px;padding:8px 16px;color:#000;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;z-index:999;font-size:.85rem;box-shadow:0 4px 15px #FFD70066";
+    btn.onclick = async()=>{
+      await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
+      localStorage.setItem("blink_uid", backupUid);
+      localStorage.setItem("blink_name", backupName);
+      localStorage.removeItem("blink_admin_backup_uid");
+      localStorage.removeItem("blink_admin_backup_name");
+      localStorage.setItem("blink_admin","yes");
+      location.reload();
+    };
+    document.body.appendChild(btn);
+  }
+}
 
 // Check if already admin on load
 function checkAdminStatus(){
