@@ -126,15 +126,10 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <div id="auth-screen" class="screen">
   <div class="card">
     <div class="logo">Blink ⚡</div>
-    <div class="sub">// sign up or log in</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button id="tab-signup" onclick="authTab('signup')" style="flex:1;padding:9px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Sign Up</button>
-      <button id="tab-login" onclick="authTab('login')" style="flex:1;padding:9px;border:none;border-radius:10px;background:var(--surface2);color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Log In</button>
-    </div>
-    <input id="name-in" class="big-input" type="text" placeholder="Username" maxlength="20" style="letter-spacing:0;margin-bottom:10px">
-    <input id="pin-in" class="big-input" type="password" placeholder="4-digit PIN" maxlength="4" inputmode="numeric" style="letter-spacing:4px">
-    <div id="auth-err" class="err"></div>
-    <button class="btn" id="auth-btn" onclick="joinChat()">Create Account →</button>
+    <div class="sub">// what's your name?</div>
+    <input id="name-in" class="big-input" type="text" placeholder="Your name" maxlength="20" style="letter-spacing:0" onkeydown="if(event.key==='Enter')joinChat()">
+    <div style="height:10px"></div>
+    <button class="btn" onclick="joinChat()">Join →</button>
   </div>
 </div>
 
@@ -260,9 +255,7 @@ window.closeModal=id=>document.getElementById(id).classList.remove("open");
 
 // ── GATE ───────────────────────────────────────────────────────────────────
 window.checkGate=()=>{
-  const val=document.getElementById("gate-in").value;
-  if(val==="1234"){
-    localStorage.setItem("blink_gate","ok");
+  if(document.getElementById("gate-in").value==="1234"){
     showScreen("auth-screen");
     setTimeout(()=>document.getElementById("name-in").focus(),100);
   } else {
@@ -273,57 +266,17 @@ window.checkGate=()=>{
 };
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
-let authMode = "signup";
-window.authTab = (mode) => {
-  authMode = mode;
-  document.getElementById("tab-signup").style.background = mode==="signup"?"var(--accent)":"var(--surface2)";
-  document.getElementById("tab-signup").style.color = mode==="signup"?"#fff":"var(--text2)";
-  document.getElementById("tab-login").style.background = mode==="login"?"var(--accent)":"var(--surface2)";
-  document.getElementById("tab-login").style.color = mode==="login"?"#fff":"var(--text2)";
-  document.getElementById("auth-btn").textContent = mode==="signup"?"Create Account →":"Log In →";
-  document.getElementById("auth-err").textContent = "";
-};
-
 window.joinChat=async()=>{
   const name=document.getElementById("name-in").value.trim();
-  const pin=document.getElementById("pin-in").value.trim();
-  const errEl=document.getElementById("auth-err");
-  if(!name){errEl.textContent="Enter a username!";return;}
-  if(!pin||pin.length!==4||isNaN(pin)){errEl.textContent="Enter a 4-digit PIN!";return;}
-
-  // Create a stable ID from username (so same username = same account)
-  const stableId = "u_" + name.toLowerCase().replace(/[^a-z0-9]/g,"") + "_" + pin;
-  
-  if(authMode==="signup"){
-    // Check if username already taken
-    const existing = await get(ref(db,"users/"+stableId));
-    if(existing.exists()){
-      errEl.textContent="Username taken! Try logging in.";
-      return;
-    }
-    myId=stableId; myName=name;
-    localStorage.setItem("blink_uid",myId);
-    localStorage.setItem("blink_name",name);
-    const userRef=ref(db,"users/"+myId);
-    await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now(),pin});
-    onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
-    enterApp();
-  } else {
-    // Login - check username + PIN
-    const existing = await get(ref(db,"users/"+stableId));
-    if(!existing.exists()){
-      errEl.textContent="Account not found! Check username & PIN.";
-      return;
-    }
-    const data = existing.val();
-    myId=stableId; myName=data.name;
-    localStorage.setItem("blink_uid",myId);
-    localStorage.setItem("blink_name",data.name);
-    const userRef=ref(db,"users/"+myId);
-    await update(userRef,{online:true,lastSeen:Date.now()});
-    onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
-    enterApp();
-  }
+  if(!name)return showToast("Enter your name!");
+  myId=localStorage.getItem("blink_uid")||("u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36));
+  myName=name;
+  localStorage.setItem("blink_uid",myId);
+  localStorage.setItem("blink_name",name);
+  const userRef=ref(db,"users/"+myId);
+  await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now()});
+  onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
+  enterApp();
 };
 
 window.leaveChat=async()=>{
@@ -355,7 +308,6 @@ function enterApp(){
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
   checkAdminStatus();
-  checkAdminBackup();
   loadUsers();
   loadGroups();
   listenGroupRequests();
@@ -665,7 +617,6 @@ function showAdminPanel(){
       <button onclick="adminDeleteAllChats()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">🗑 Delete ALL Chats</button>
       <button onclick="adminDeleteAllUsers()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👤 Delete ALL Accounts</button>
       <button onclick="adminShowUsers()" style="background:var(--accent);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👥 Manage Users</button>
-      <button onclick="adminViewChats()" style="background:#ffb84f;border:none;border-radius:10px;padding:12px;color:#000;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">💬 View All Chats</button>
       <button onclick="document.getElementById('admin-panel').remove()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">Close</button>
     </div>`;
   document.body.appendChild(panel);
@@ -691,99 +642,17 @@ window.adminDeleteAllUsers = async () => {
 
 window.adminShowUsers = async () => {
   const snap = await get(ref(db,"users"));
-  const users = Object.values(snap.val()||{}).filter(u=>u&&u.uid&&u.name);
-  if(!users.length) return showToast("No users!");
+  const users = Object.values(snap.val()||{}).filter(u=>u.uid!==myId);
+  if(!users.length) return showToast("No other users!");
   const panel = document.createElement("div");
   panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:90%;max-width:360px;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
   panel.innerHTML = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">👥 Manage Users</div>` +
-    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px;cursor:pointer" onclick="adminLoginAs('${u.uid}','${esc(u.name)}')">
-      <div class="av" style="background:${col(u.uid)};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0">${av(u.name)}</div>
-      <div style="flex:1;font-weight:600">${esc(u.name)}${u.uid===myId?'<span style="color:#3effa0;font-size:.7rem;margin-left:6px">(you)</span>':""}</div>
-      ${u.uid!==myId?`<button onclick="event.stopPropagation();adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>`:""}
+    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px">
+      <div style="flex:1;font-weight:600">${esc(u.name)}</div>
+      <button onclick="adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>
     </div>`).join("") +
     `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
   document.body.appendChild(panel);
-};
-
-window.adminLoginAs = async (uid, name) => {
-  if(!confirm("Login as "+name+"?
-
-Your original account is saved. Tap '← Back to Admin' to return.")) return;
-  // Save original admin account
-  localStorage.setItem("blink_admin_backup_uid", myId);
-  localStorage.setItem("blink_admin_backup_name", myName);
-  localStorage.setItem("blink_admin","yes");
-  // Set offline for current
-  await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
-  // Switch to new user
-  localStorage.setItem("blink_uid", uid);
-  localStorage.setItem("blink_name", name);
-  // Close all panels
-  document.querySelectorAll("[style*='z-index:600'],[style*='z-index:500']").forEach(el=>el.remove());
-  showToast("Logged in as "+name+"!");
-  // Reload as that user
-  location.reload();
-};
-
-window.adminViewChats = async () => {
-  document.getElementById("admin-panel")?.remove();
-  const chatsSnap = await get(ref(db,"chats"));
-  const usersSnap = await get(ref(db,"users"));
-  const users = usersSnap.val()||{};
-  const chats = chatsSnap.val()||{};
-  
-  const panel = document.createElement("div");
-  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:92%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
-  
-  let html = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">💬 All Chats</div>`;
-  
-  if(!Object.keys(chats).length){
-    html += `<div style="color:var(--text2);text-align:center;padding:20px">No chats yet</div>`;
-  } else {
-    Object.entries(chats).forEach(([cid, chat])=>{
-      const uids = cid.split("__");
-      const name1 = users[uids[0]]?.name || uids[0].substring(0,8);
-      const name2 = users[uids[1]]?.name || uids[1].substring(0,8);
-      const msgs = chat.messages ? Object.values(chat.messages) : [];
-      const last = msgs.sort((a,b)=>b.ts-a.ts)[0];
-      html += `<div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:10px;">
-        <div style="font-weight:700;margin-bottom:6px">💬 ${esc(name1)} & ${esc(name2)}</div>
-        <div style="color:var(--text2);font-size:.8rem;margin-bottom:8px">${msgs.length} messages${last?` · Last: "${esc(last.text?.substring(0,30)||"📸 Photo")}"`:" "}</div>
-        <div style="display:flex;gap:8px">
-          <button onclick="adminReadChat('${cid}')" style="flex:1;background:var(--accent);border:none;border-radius:8px;padding:7px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">👁 Read</button>
-          <button onclick="adminDeleteChat('${cid}')" style="flex:1;background:#ff4f6f;border:none;border-radius:8px;padding:7px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">🗑 Delete</button>
-        </div>
-      </div>`;
-    });
-  }
-  
-  html += `<button onclick="this.parentElement.remove();showAdminPanel()" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
-  panel.innerHTML = html;
-  document.body.appendChild(panel);
-};
-
-window.adminReadChat = async (cid) => {
-  const snap = await get(ref(db,"chats/"+cid+"/messages"));
-  const msgs = Object.values(snap.val()||{}).sort((a,b)=>a.ts-b.ts);
-  const panel = document.createElement("div");
-  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:700;width:92%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
-  let html = `<div style="font-size:1rem;font-weight:700;margin-bottom:14px">👁 Chat Messages</div>`;
-  msgs.forEach(m=>{
-    html += `<div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:8px;">
-      <div style="font-size:.75rem;color:#ffb84f;font-weight:700">${esc(m.name||"?")}</div>
-      <div style="font-size:.88rem;margin-top:4px">${m.text?.startsWith("__IMG__")?"📸 Image":esc(m.text?.substring(0,100))}</div>
-    </div>`;
-  });
-  html += `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
-  panel.innerHTML = html;
-  document.body.appendChild(panel);
-};
-
-window.adminDeleteChat = async (cid) => {
-  if(!confirm("Delete this entire chat?")) return;
-  await set(ref(db,"chats/"+cid),null);
-  showToast("Chat deleted!");
-  adminViewChats();
 };
 
 window.adminDeleteUser = async (uid, name) => {
@@ -793,27 +662,6 @@ window.adminDeleteUser = async (uid, name) => {
   document.querySelectorAll("[style*='z-index:600']").forEach(el=>el.remove());
   adminShowUsers();
 };
-
-// Add back-to-admin button if we switched accounts
-function checkAdminBackup(){
-  const backupUid = localStorage.getItem("blink_admin_backup_uid");
-  const backupName = localStorage.getItem("blink_admin_backup_name");
-  if(backupUid && backupName){
-    const btn = document.createElement("button");
-    btn.textContent = "← Back to "+backupName;
-    btn.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FFD700,#FFA500);border:none;border-radius:10px;padding:8px 16px;color:#000;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;z-index:999;font-size:.85rem;box-shadow:0 4px 15px #FFD70066";
-    btn.onclick = async()=>{
-      await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
-      localStorage.setItem("blink_uid", backupUid);
-      localStorage.setItem("blink_name", backupName);
-      localStorage.removeItem("blink_admin_backup_uid");
-      localStorage.removeItem("blink_admin_backup_name");
-      localStorage.setItem("blink_admin","yes");
-      location.reload();
-    };
-    document.body.appendChild(btn);
-  }
-}
 
 // Check if already admin on load
 function checkAdminStatus(){
@@ -826,7 +674,6 @@ function checkAdminStatus(){
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
 document.getElementById("gate-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.checkGate();});
-document.getElementById("pin-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 document.getElementById("name-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 
 // ── PAGE VISIBILITY ────────────────────────────────────────────────────────
@@ -842,10 +689,7 @@ if(sn&&si){
   const uRef=ref(db,"users/"+myId);
   set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
   onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
-  enterApp(); // Skip gate and auth screens if already logged in
-} else {
-  // Show gate screen for new users
-  showScreen("gate-screen");
+  enterApp();
 }
 </script>
 </body>
