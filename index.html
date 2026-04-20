@@ -394,52 +394,23 @@ window.createGroup=async()=>{
 window.requestJoin=async(gid,gname)=>{
   const g=allGroups.find(x=>x.gid===gid);
   if(!g)return;
-  if(g.requests&&g.requests[myId])return showToast("Already requested!");
+  if(g.requests&&g.requests[myId])return showToast("Already requested to join!");
+  if(g.members&&g.members[myId])return showToast("You are already a member!");
   await update(ref(db,"groups/"+gid+"/requests/"+myId),{name:myName,uid:myId,ts:Date.now()});
-  // Notify owner
-  await push(ref(db,"notifications/"+g.owner),{type:"join_request",groupId:gid,groupName:gname,fromId:myId,fromName:myName,ts:Date.now()});
-  showToast("Request sent to group owner!");
+  // Send a system message in group chat so owner sees it
+  await push(ref(db,"groups/"+gid+"/messages"),{
+    text:"__JOIN_REQUEST__"+myId+"__"+myName,
+    uid:"__system__",name:"System",ts:Date.now(),requestId:myId
+  });
+  showToast("Join request sent! Waiting for owner to accept.");
 };
 
-// Listen for join requests (owner only)
-function listenGroupRequests(){
-  onValue(ref(db,"notifications/"+myId),snap=>{
-    const data=snap.val()||{};
-    Object.entries(data).forEach(([nid,n])=>{
-      if(n.type==="join_request"&&!n.seen){
-        showJoinRequest(nid,n);
-      }
-    });
-  });
-}
+// listenGroupRequests - now handled via group chat messages
+function listenGroupRequests(){}
 
-function showJoinRequest(nid,n){
-  if(confirm(`👋 ${n.fromName} wants to join "${n.groupName}"!\n\nAccept?`)){
-    // Add member
-    update(ref(db,"groups/"+n.groupId+"/members/"+n.fromId),{name:n.fromName,uid:n.fromId,joinedAt:Date.now()});
-    // Remove request
-    set(ref(db,"groups/"+n.groupId+"/requests/"+n.fromId),null);
-    // Notify requester
-    push(ref(db,"notifications/"+n.fromId),{type:"join_accepted",groupId:n.groupId,groupName:n.groupName,ts:Date.now()});
-    showToast(n.fromName+" added to group!");
-  } else {
-    set(ref(db,"groups/"+n.groupId+"/requests/"+n.fromId),null);
-  }
-  // Mark notification as seen
-  update(ref(db,"notifications/"+myId+"/"+nid),{seen:true});
-}
 
-// Listen for accepted notifications
-onValue(ref(db,"notifications/"+myId),snap=>{
-  if(!myId)return;
-  const data=snap.val()||{};
-  Object.entries(data).forEach(([nid,n])=>{
-    if(n.type==="join_accepted"&&!n.seen){
-      showToast("✅ You were accepted into "+n.groupName+"!");
-      update(ref(db,"notifications/"+myId+"/"+nid),{seen:true});
-    }
-  });
-});
+
+
 
 // ── OPEN DM ────────────────────────────────────────────────────────────────
 window.openDM=(uid,name)=>{
@@ -523,6 +494,15 @@ function renderMsgs(msgs){
       msgContent=`<img src="${m.text.slice(7)}" style="max-width:200px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.text.slice(7)}','_blank')">`;
     } else if(m.text&&m.text.startsWith("https://")){
       msgContent=`<a href="${m.text}" target="_blank" style="color:#3effa0;word-break:break-all;">${m.text}</a><br><button onclick="window.open('${m.text}','_blank')" style="margin-top:8px;background:#3effa0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;color:#000;font-size:1rem;">👆 Join Call</button>`;
+    } else if(m.text&&m.text.startsWith("__JOIN_REQUEST__")){
+      const parts=m.text.split("__");
+      const reqId=parts[2];const reqName=parts[3];
+      const g=allGroups.find(x=>x.gid===currentChatId);
+      const isOwner=g&&g.owner===myId;
+      const alreadyMember=g&&g.members&&g.members[reqId];
+      msgContent=alreadyMember
+        ?`<div style="color:#3effa0">✅ ${esc(reqName)} joined the group</div>`
+        :`<div style="color:#ffb84f">👋 <b>${esc(reqName)}</b> wants to join!</div>${isOwner?`<div style="display:flex;gap:8px;margin-top:8px"><button onclick="acceptMember('${reqId}','${esc(reqName)}')" style="background:#3effa0;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;color:#000">✓ Accept</button><button onclick="declineMember('${reqId}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;color:#fff">✗ Decline</button></div>`:"<div style='color:var(--text2);font-size:.8rem'>Waiting for owner...</div>"}`;
     } else {
       msgContent=esc(m.text);
     }
@@ -559,6 +539,22 @@ window.sendPhoto=async(input)=>{
   };
   reader.readAsDataURL(file);
   input.value="";
+};
+
+// ── ACCEPT/DECLINE MEMBER ─────────────────────────────────────────────────
+window.acceptMember=async(uid,name)=>{
+  await update(ref(db,"groups/"+currentChatId+"/members/"+uid),{name,uid,joinedAt:Date.now()});
+  await set(ref(db,"groups/"+currentChatId+"/requests/"+uid),null);
+  await push(ref(db,"groups/"+currentChatId+"/messages"),{
+    text:"__JOIN_REQUEST__"+uid+"__"+name,
+    uid:"__system__",name:"System",ts:Date.now()+1,requestId:uid,accepted:true
+  });
+  showToast(name+" was accepted!");
+};
+
+window.declineMember=async(uid)=>{
+  await set(ref(db,"groups/"+currentChatId+"/requests/"+uid),null);
+  showToast("Request declined.");
 };
 
 // ── DELETE MESSAGE ─────────────────────────────────────────────────────────
