@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Blink Chat </title>
+<title>Blink Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -126,10 +126,15 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <div id="auth-screen" class="screen">
   <div class="card">
     <div class="logo">Blink ⚡</div>
-    <div class="sub">// what's your name?</div>
-    <input id="name-in" class="big-input" type="text" placeholder="Your name" maxlength="20" style="letter-spacing:0" onkeydown="if(event.key==='Enter')joinChat()">
-    <div style="height:10px"></div>
-    <button class="btn" onclick="joinChat()">Join →</button>
+    <div class="sub">// sign up or log in</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button id="tab-signup" onclick="authTab('signup')" style="flex:1;padding:9px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Sign Up</button>
+      <button id="tab-login" onclick="authTab('login')" style="flex:1;padding:9px;border:none;border-radius:10px;background:var(--surface2);color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Log In</button>
+    </div>
+    <input id="name-in" class="big-input" type="text" placeholder="Username" maxlength="20" style="letter-spacing:0;margin-bottom:10px">
+    <input id="pin-in" class="big-input" type="password" placeholder="4-digit PIN" maxlength="4" inputmode="numeric" style="letter-spacing:4px">
+    <div id="auth-err" class="err"></div>
+    <button class="btn" id="auth-btn" onclick="joinChat()">Create Account →</button>
   </div>
 </div>
 
@@ -255,7 +260,9 @@ window.closeModal=id=>document.getElementById(id).classList.remove("open");
 
 // ── GATE ───────────────────────────────────────────────────────────────────
 window.checkGate=()=>{
-  if(document.getElementById("gate-in").value==="1234"){
+  const val=document.getElementById("gate-in").value;
+  if(val==="1234"){
+    localStorage.setItem("blink_gate","ok");
     showScreen("auth-screen");
     setTimeout(()=>document.getElementById("name-in").focus(),100);
   } else {
@@ -266,17 +273,57 @@ window.checkGate=()=>{
 };
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
+let authMode = "signup";
+window.authTab = (mode) => {
+  authMode = mode;
+  document.getElementById("tab-signup").style.background = mode==="signup"?"var(--accent)":"var(--surface2)";
+  document.getElementById("tab-signup").style.color = mode==="signup"?"#fff":"var(--text2)";
+  document.getElementById("tab-login").style.background = mode==="login"?"var(--accent)":"var(--surface2)";
+  document.getElementById("tab-login").style.color = mode==="login"?"#fff":"var(--text2)";
+  document.getElementById("auth-btn").textContent = mode==="signup"?"Create Account →":"Log In →";
+  document.getElementById("auth-err").textContent = "";
+};
+
 window.joinChat=async()=>{
   const name=document.getElementById("name-in").value.trim();
-  if(!name)return showToast("Enter your name!");
-  myId=localStorage.getItem("blink_uid")||("u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36));
-  myName=name;
-  localStorage.setItem("blink_uid",myId);
-  localStorage.setItem("blink_name",name);
-  const userRef=ref(db,"users/"+myId);
-  await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now()});
-  onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
-  enterApp();
+  const pin=document.getElementById("pin-in").value.trim();
+  const errEl=document.getElementById("auth-err");
+  if(!name){errEl.textContent="Enter a username!";return;}
+  if(!pin||pin.length!==4||isNaN(pin)){errEl.textContent="Enter a 4-digit PIN!";return;}
+
+  // Create a stable ID from username (so same username = same account)
+  const stableId = "u_" + name.toLowerCase().replace(/[^a-z0-9]/g,"") + "_" + pin;
+  
+  if(authMode==="signup"){
+    // Check if username already taken
+    const existing = await get(ref(db,"users/"+stableId));
+    if(existing.exists()){
+      errEl.textContent="Username taken! Try logging in.";
+      return;
+    }
+    myId=stableId; myName=name;
+    localStorage.setItem("blink_uid",myId);
+    localStorage.setItem("blink_name",name);
+    const userRef=ref(db,"users/"+myId);
+    await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now(),pin});
+    onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
+    enterApp();
+  } else {
+    // Login - check username + PIN
+    const existing = await get(ref(db,"users/"+stableId));
+    if(!existing.exists()){
+      errEl.textContent="Account not found! Check username & PIN.";
+      return;
+    }
+    const data = existing.val();
+    myId=stableId; myName=data.name;
+    localStorage.setItem("blink_uid",myId);
+    localStorage.setItem("blink_name",data.name);
+    const userRef=ref(db,"users/"+myId);
+    await update(userRef,{online:true,lastSeen:Date.now()});
+    onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
+    enterApp();
+  }
 };
 
 window.leaveChat=async()=>{
@@ -779,6 +826,7 @@ function checkAdminStatus(){
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
 document.getElementById("gate-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.checkGate();});
+document.getElementById("pin-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 document.getElementById("name-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 
 // ── PAGE VISIBILITY ────────────────────────────────────────────────────────
@@ -794,7 +842,10 @@ if(sn&&si){
   const uRef=ref(db,"users/"+myId);
   set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
   onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
-  enterApp();
+  enterApp(); // Skip gate and auth screens if already logged in
+} else {
+  // Show gate screen for new users
+  showScreen("gate-screen");
 }
 </script>
 </body>
