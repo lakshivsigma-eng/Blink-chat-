@@ -94,6 +94,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 .modal-cancel{background:var(--surface2);color:var(--text)}
 .modal-ok{background:linear-gradient(135deg,var(--accent),#a06fff);color:#fff}
 
+.vip-tag{background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:6px;font-family:monospace;margin-left:6px;vertical-align:middle}
+.admin-tag{background:linear-gradient(135deg,#ff4f6f,#ff0040);color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:6px;font-family:monospace;margin-left:6px;vertical-align:middle}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#ff4f6f;color:#fff;padding:12px 24px;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #open-btn{display:none;position:fixed;bottom:90px;left:16px;z-index:200;background:var(--accent);border:none;border-radius:50%;width:54px;height:54px;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px #7c6fff66;align-items:center;justify-content:center;color:#fff}
@@ -182,7 +184,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 
     <div class="sid-bot">
       <button class="del-btn" onclick="deleteMyAccount()">🗑 Delete My Account</button>
-      <button class="admin-btn" onclick="deleteAllData()">⚙ admin</button>
+      <button class="admin-btn" id="admin-secret-btn" onclick="unlockAdmin()">⚙</button>
     </div>
   </div>
 
@@ -305,6 +307,7 @@ function enterApp(){
   document.getElementById("my-av").style.background=col(myId);
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
+  checkAdminStatus();
   loadUsers();
   loadGroups();
   listenGroupRequests();
@@ -338,7 +341,7 @@ function renderUsers(filter){
     <div class="item" ontouchend="event.preventDefault();openDM('${u.uid}','${esc(u.name)}')" onclick="openDM('${u.uid}','${esc(u.name)}')">
       <div class="av" style="background:${col(u.uid)}">${av(u.name)}</div>
       <div class="item-info">
-        <div class="item-name">${esc(u.name)}</div>
+        <div class="item-name">${esc(u.name)}${u.isAdmin?'<span class="admin-tag">ADMIN</span>':''}</div>
         <div class="item-sub">${u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div>
       </div>
     </div>`).join("");
@@ -587,6 +590,86 @@ window.startVideoCall=()=>{
 // ── SIDEBAR ────────────────────────────────────────────────────────────────
 window.toggleSidebar=()=>document.getElementById("sidebar").classList.toggle("open");
 window.closeSidebar=()=>document.getElementById("sidebar").classList.remove("open");
+
+// ── ADMIN SYSTEM ───────────────────────────────────────────────────────────
+let isAdmin = false;
+
+window.unlockAdmin = async () => {
+  const pass = prompt("Enter admin password:");
+  if(pass !== "1234admin") return showToast("❌ Wrong admin password!");
+  isAdmin = true;
+  localStorage.setItem("blink_admin","yes");
+  await update(ref(db,"users/"+myId),{isAdmin:true,nameTag:"👑 ADMIN"});
+  showAdminPanel();
+};
+
+function showAdminPanel(){
+  // Update name display with golden tag
+  document.getElementById("my-nm").innerHTML = myName + ' <span class="admin-tag">ADMIN</span>';
+  // Show admin panel
+  const panel = document.createElement("div");
+  panel.id = "admin-panel";
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:28px;z-index:500;width:90%;max-width:360px;text-align:center;box-shadow:0 0 40px #FFD70044";
+  panel.innerHTML = `
+    <div style="font-size:1.5rem;margin-bottom:4px">👑 Admin Panel</div>
+    <div style="color:var(--text2);font-size:.82rem;margin-bottom:20px">You have admin powers</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="adminDeleteAllChats()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">🗑 Delete ALL Chats</button>
+      <button onclick="adminDeleteAllUsers()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👤 Delete ALL Accounts</button>
+      <button onclick="adminShowUsers()" style="background:var(--accent);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👥 Manage Users</button>
+      <button onclick="document.getElementById('admin-panel').remove()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">Close</button>
+    </div>`;
+  document.body.appendChild(panel);
+}
+
+window.adminDeleteAllChats = async () => {
+  if(!confirm("Delete ALL chats? Cannot be undone!")) return;
+  await set(ref(db,"chats"),null);
+  await set(ref(db,"groups"),null);
+  document.getElementById("admin-panel")?.remove();
+  showToast("All chats deleted!");
+};
+
+window.adminDeleteAllUsers = async () => {
+  if(!confirm("Delete ALL accounts? Everyone gets logged out!")) return;
+  if(!confirm("100% sure?")) return;
+  await set(ref(db,"users"),null);
+  await set(ref(db,"chats"),null);
+  await set(ref(db,"groups"),null);
+  localStorage.clear();
+  location.reload();
+};
+
+window.adminShowUsers = async () => {
+  const snap = await get(ref(db,"users"));
+  const users = Object.values(snap.val()||{}).filter(u=>u.uid!==myId);
+  if(!users.length) return showToast("No other users!");
+  const panel = document.createElement("div");
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:90%;max-width:360px;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  panel.innerHTML = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">👥 Manage Users</div>` +
+    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px">
+      <div style="flex:1;font-weight:600">${esc(u.name)}</div>
+      <button onclick="adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>
+    </div>`).join("") +
+    `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
+  document.body.appendChild(panel);
+};
+
+window.adminDeleteUser = async (uid, name) => {
+  if(!confirm("Delete "+name+"'s account?")) return;
+  await set(ref(db,"users/"+uid),null);
+  showToast(name+" deleted!");
+  document.querySelectorAll("[style*='z-index:600']").forEach(el=>el.remove());
+  adminShowUsers();
+};
+
+// Check if already admin on load
+function checkAdminStatus(){
+  if(localStorage.getItem("blink_admin")==="yes"){
+    isAdmin = true;
+    document.getElementById("my-nm").innerHTML = myName + ' <span class="admin-tag">ADMIN</span>';
+  }
+}
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
