@@ -617,6 +617,7 @@ function showAdminPanel(){
       <button onclick="adminDeleteAllChats()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">🗑 Delete ALL Chats</button>
       <button onclick="adminDeleteAllUsers()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👤 Delete ALL Accounts</button>
       <button onclick="adminShowUsers()" style="background:var(--accent);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👥 Manage Users</button>
+      <button onclick="adminViewChats()" style="background:#ffb84f;border:none;border-radius:10px;padding:12px;color:#000;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">💬 View All Chats</button>
       <button onclick="document.getElementById('admin-panel').remove()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">Close</button>
     </div>`;
   document.body.appendChild(panel);
@@ -653,6 +654,67 @@ window.adminShowUsers = async () => {
     </div>`).join("") +
     `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
   document.body.appendChild(panel);
+};
+
+window.adminViewChats = async () => {
+  document.getElementById("admin-panel")?.remove();
+  const chatsSnap = await get(ref(db,"chats"));
+  const usersSnap = await get(ref(db,"users"));
+  const users = usersSnap.val()||{};
+  const chats = chatsSnap.val()||{};
+  
+  const panel = document.createElement("div");
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:92%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  
+  let html = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">💬 All Chats</div>`;
+  
+  if(!Object.keys(chats).length){
+    html += `<div style="color:var(--text2);text-align:center;padding:20px">No chats yet</div>`;
+  } else {
+    Object.entries(chats).forEach(([cid, chat])=>{
+      const uids = cid.split("__");
+      const name1 = users[uids[0]]?.name || uids[0].substring(0,8);
+      const name2 = users[uids[1]]?.name || uids[1].substring(0,8);
+      const msgs = chat.messages ? Object.values(chat.messages) : [];
+      const last = msgs.sort((a,b)=>b.ts-a.ts)[0];
+      html += `<div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:10px;">
+        <div style="font-weight:700;margin-bottom:6px">💬 ${esc(name1)} & ${esc(name2)}</div>
+        <div style="color:var(--text2);font-size:.8rem;margin-bottom:8px">${msgs.length} messages${last?` · Last: "${esc(last.text?.substring(0,30)||"📸 Photo")}"`:" "}</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="adminReadChat('${cid}')" style="flex:1;background:var(--accent);border:none;border-radius:8px;padding:7px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">👁 Read</button>
+          <button onclick="adminDeleteChat('${cid}')" style="flex:1;background:#ff4f6f;border:none;border-radius:8px;padding:7px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">🗑 Delete</button>
+        </div>
+      </div>`;
+    });
+  }
+  
+  html += `<button onclick="this.parentElement.remove();showAdminPanel()" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+
+window.adminReadChat = async (cid) => {
+  const snap = await get(ref(db,"chats/"+cid+"/messages"));
+  const msgs = Object.values(snap.val()||{}).sort((a,b)=>a.ts-b.ts);
+  const panel = document.createElement("div");
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:700;width:92%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  let html = `<div style="font-size:1rem;font-weight:700;margin-bottom:14px">👁 Chat Messages</div>`;
+  msgs.forEach(m=>{
+    html += `<div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:8px;">
+      <div style="font-size:.75rem;color:#ffb84f;font-weight:700">${esc(m.name||"?")}</div>
+      <div style="font-size:.88rem;margin-top:4px">${m.text?.startsWith("__IMG__")?"📸 Image":esc(m.text?.substring(0,100))}</div>
+    </div>`;
+  });
+  html += `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+
+window.adminDeleteChat = async (cid) => {
+  if(!confirm("Delete this entire chat?")) return;
+  await set(ref(db,"chats/"+cid),null);
+  showToast("Chat deleted!");
+  adminViewChats();
 };
 
 window.adminDeleteUser = async (uid, name) => {
