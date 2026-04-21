@@ -114,7 +114,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <!-- GATE -->
 <div id="gate-screen" class="screen active">
   <div class="card">
-    <div class="logo">Blink ⚡</div>
+    <div class="logo">Blink by lakshiv⚡</div>
     <div class="sub">// enter password</div>
     <input id="gate-in" class="big-input" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')checkGate()">
     <div id="gate-err" class="err"></div>
@@ -125,7 +125,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <!-- AUTH -->
 <div id="auth-screen" class="screen">
   <div class="card">
-    <div class="logo">Blink ⚡</div>
+    <div class="logo">Blink by lakshiv ⚡</div>
     <div class="sub">// what's your name?</div>
     <input id="name-in" class="big-input" type="text" placeholder="Your name" maxlength="20" style="letter-spacing:0" onkeydown="if(event.key==='Enter')joinChat()">
     <div style="height:10px"></div>
@@ -150,11 +150,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <div id="app-screen" class="screen">
   <div id="sidebar">
     <div class="sid-top">
-      <div class="brand">Blink ⚡</div>
+      <div class="brand">Blink by lakshiv ⚡</div>
       <div class="profile">
         <div class="av" id="my-av">?</div>
         <div class="av-name">
-          <div class="av-label">chatting as</div>
+          <div class="av-label">you are</div>
           <div class="av-val" id="my-nm">...</div>
         </div>
         <button class="leave-btn" onclick="leaveChat()">Leave</button>
@@ -596,7 +596,7 @@ let isAdmin = false;
 
 window.unlockAdmin = async () => {
   const pass = prompt("Enter admin password:");
-  if(pass !== "1234admin") return showToast("❌ Wrong admin password!");
+  if(pass !== "admin") return showToast("❌ Wrong admin password!");
   isAdmin = true;
   localStorage.setItem("blink_admin","yes");
   await update(ref(db,"users/"+myId),{isAdmin:true,nameTag:"👑 ADMIN"});
