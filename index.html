@@ -287,6 +287,7 @@ window.closeModal=id=>document.getElementById(id).classList.remove("open");
 window.checkGate=()=>{
   const val=document.getElementById("gate-in").value.trim();
   if(val==="1234"){
+    localStorage.setItem("blink_gate","ok");
     document.getElementById("gate-screen").classList.remove("active");
     document.getElementById("auth-screen").classList.add("active");
     setTimeout(()=>{
@@ -996,9 +997,11 @@ if(sn&&si){
   const uRef=ref(db,"users/"+myId);
   set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
   onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
-  enterApp(); // Skip gate and auth screens if already logged in
+  enterApp();
+} else if(localStorage.getItem("blink_gate")==="ok"){
+  // Already passed gate, just need name
+  showScreen("auth-screen");
 } else {
-  // Show gate screen for new users
   showScreen("gate-screen");
 }
 </script>
