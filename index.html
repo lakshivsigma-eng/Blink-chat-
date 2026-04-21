@@ -126,10 +126,15 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <div id="auth-screen" class="screen">
   <div class="card">
     <div class="logo">Blink ⚡</div>
-    <div class="sub">// what's your name?</div>
-    <input id="name-in" class="big-input" type="text" placeholder="Your name" maxlength="20" style="letter-spacing:0" onkeydown="if(event.key==='Enter')joinChat()">
-    <div style="height:10px"></div>
-    <button class="btn" onclick="joinChat()">Join →</button>
+    <div class="sub">// sign up or log in</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button id="tab-signup" onclick="authTab('signup')" style="flex:1;padding:9px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Sign Up</button>
+      <button id="tab-login" onclick="authTab('login')" style="flex:1;padding:9px;border:none;border-radius:10px;background:var(--surface2);color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Log In</button>
+    </div>
+    <input id="name-in" class="big-input" type="text" placeholder="Username" maxlength="20" style="letter-spacing:0;margin-bottom:10px">
+    <input id="pin-in" class="big-input" type="password" placeholder="4-digit PIN" maxlength="4" inputmode="numeric" style="letter-spacing:4px">
+    <div id="auth-err" class="err"></div>
+    <button class="btn" id="auth-btn" onclick="joinChat()">Create Account →</button>
   </div>
 </div>
 
@@ -203,18 +208,43 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
           <div id="chat-sub"></div>
         </div>
         <button class="call-btn-main" onclick="startVideoCall()">📹</button>
+        <button id="grp-settings-btn" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:42px;height:42px;font-size:1.1rem;cursor:pointer;flex-shrink:0;" onclick="openGroupSettings()">⚙️</button>
       </div>
       <div id="msgs"></div>
       <div class="typing" id="typing-indicator"></div>
       <div class="input-bar">
-        <label style="cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:12px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">
-          📸<input type="file" accept="image/*" id="photo-in" style="display:none" onchange="sendPhoto(this)">
-        </label>
+        <div style="position:relative">
+          <button onclick="toggleAttachMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;flex-shrink:0;">📎</button>
+          <div id="attach-menu" style="display:none;position:absolute;bottom:56px;left:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:100;min-width:160px;box-shadow:0 8px 32px #0008">
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:600;" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='none'">
+              📸 Photo<input type="file" accept="image/*" style="display:none" onchange="sendPhoto(this);toggleAttachMenu()">
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:600;" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='none'">
+              📁 File<input type="file" style="display:none" onchange="sendFile(this);toggleAttachMenu()">
+            </label>
+            <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+            <div style="padding:6px 8px;color:var(--text2);font-size:.78rem">Stickers</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px 8px">
+              ${["😂","❤️","🔥","👍","😭","💀","🎉","😍","🤣","💯"].map(s=>`<span onclick="sendSticker('${s}');toggleAttachMenu()" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:8px;" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='none'">${s}</span>`).join("")}
+            </div>
+          </div>
+        </div>
         <input id="msg-in" type="text" placeholder="Type a message…">
         <button class="send-btn" onclick="sendMessage()">
           <svg width="20" height="20" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- GROUP SETTINGS MODAL -->
+<div class="modal-bg" id="grp-settings-modal">
+  <div class="modal">
+    <h3 id="grp-settings-title">Group Settings</h3>
+    <div id="grp-members-list" style="max-height:300px;overflow-y:auto;margin:12px 0"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('grp-settings-modal')">Close</button>
     </div>
   </div>
 </div>
@@ -255,7 +285,9 @@ window.closeModal=id=>document.getElementById(id).classList.remove("open");
 
 // ── GATE ───────────────────────────────────────────────────────────────────
 window.checkGate=()=>{
-  if(document.getElementById("gate-in").value==="1234"){
+  const val=document.getElementById("gate-in").value;
+  if(val==="1234"){
+    localStorage.setItem("blink_gate","ok");
     showScreen("auth-screen");
     setTimeout(()=>document.getElementById("name-in").focus(),100);
   } else {
@@ -266,17 +298,57 @@ window.checkGate=()=>{
 };
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
+let authMode = "signup";
+window.authTab = (mode) => {
+  authMode = mode;
+  document.getElementById("tab-signup").style.background = mode==="signup"?"var(--accent)":"var(--surface2)";
+  document.getElementById("tab-signup").style.color = mode==="signup"?"#fff":"var(--text2)";
+  document.getElementById("tab-login").style.background = mode==="login"?"var(--accent)":"var(--surface2)";
+  document.getElementById("tab-login").style.color = mode==="login"?"#fff":"var(--text2)";
+  document.getElementById("auth-btn").textContent = mode==="signup"?"Create Account →":"Log In →";
+  document.getElementById("auth-err").textContent = "";
+};
+
 window.joinChat=async()=>{
   const name=document.getElementById("name-in").value.trim();
-  if(!name)return showToast("Enter your name!");
-  myId=localStorage.getItem("blink_uid")||("u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36));
-  myName=name;
-  localStorage.setItem("blink_uid",myId);
-  localStorage.setItem("blink_name",name);
-  const userRef=ref(db,"users/"+myId);
-  await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now()});
-  onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
-  enterApp();
+  const pin=document.getElementById("pin-in").value.trim();
+  const errEl=document.getElementById("auth-err");
+  if(!name){errEl.textContent="Enter a username!";return;}
+  if(!pin||pin.length!==4||isNaN(pin)){errEl.textContent="Enter a 4-digit PIN!";return;}
+
+  // Create a stable ID from username (so same username = same account)
+  const stableId = "u_" + name.toLowerCase().replace(/[^a-z0-9]/g,"") + "_" + pin;
+  
+  if(authMode==="signup"){
+    // Check if username already taken
+    const existing = await get(ref(db,"users/"+stableId));
+    if(existing.exists()){
+      errEl.textContent="Username taken! Try logging in.";
+      return;
+    }
+    myId=stableId; myName=name;
+    localStorage.setItem("blink_uid",myId);
+    localStorage.setItem("blink_name",name);
+    const userRef=ref(db,"users/"+myId);
+    await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now(),pin});
+    onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
+    enterApp();
+  } else {
+    // Login - check username + PIN
+    const existing = await get(ref(db,"users/"+stableId));
+    if(!existing.exists()){
+      errEl.textContent="Account not found! Check username & PIN.";
+      return;
+    }
+    const data = existing.val();
+    myId=stableId; myName=data.name;
+    localStorage.setItem("blink_uid",myId);
+    localStorage.setItem("blink_name",data.name);
+    const userRef=ref(db,"users/"+myId);
+    await update(userRef,{online:true,lastSeen:Date.now()});
+    onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
+    enterApp();
+  }
 };
 
 window.leaveChat=async()=>{
@@ -308,6 +380,7 @@ function enterApp(){
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
   checkAdminStatus();
+  checkAdminBackup();
   loadUsers();
   loadGroups();
   listenGroupRequests();
@@ -353,10 +426,15 @@ function loadGroups(){
     const data=snap.val()||{};
     allGroups=Object.entries(data).map(([k,v])=>({...v,gid:k}));
     renderGroups("");
+    checkInviteLinkAfterLoad();
   });
 }
 
 window.filterGroups=val=>renderGroups(val.toLowerCase());
+
+function checkInviteLinkAfterLoad(){
+  if(inviteGroupId&&allGroups.length>0) checkInviteLink();
+}
 
 function renderGroups(filter){
   const list=document.getElementById("groups-list");
@@ -372,7 +450,13 @@ function renderGroups(filter){
         <div class="item-name">${esc(g.name)}</div>
         <div class="item-sub">${g.desc||""} · ${g.members?Object.keys(g.members).length:0} members</div>
       </div>
-      <div style="font-size:.75rem;color:${isMember?"#3effa0":pending?"#ffb84f":"var(--text2)"};flex-shrink:0">${isOwner?"👑":isMember?"✓":pending?"Pending":"Join"}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        ${isOwner?'<span style="font-size:.75rem;color:#FFD700">👑</span>':''}
+        ${isMember&&!isOwner?'<span style="font-size:.75rem;color:#3effa0">✓</span>':''}
+        ${!isMember&&!pending?'<span style="font-size:.75rem;color:var(--text2)">Join</span>':''}
+        ${pending?'<span style="font-size:.75rem;color:#ffb84f">Pending</span>':''}
+        ${isMember?`<button onclick="event.stopPropagation();copyInviteLink('${g.gid}')" style="background:var(--surface2);border:none;border-radius:6px;padding:4px 8px;color:var(--text2);font-size:.7rem;cursor:pointer;">🔗</button>`:''}
+      </div>
     </div>`;
   }).join("");
 }
@@ -417,6 +501,7 @@ function listenGroupRequests(){}
 
 // ── OPEN DM ────────────────────────────────────────────────────────────────
 window.openDM=(uid,name)=>{
+  document.getElementById("grp-settings-btn").style.display="none";
   document.getElementById("sidebar").classList.remove("open");
   currentChatId=chatId(myId,uid);
   currentChatType="dm";
@@ -432,6 +517,7 @@ window.openDM=(uid,name)=>{
 
 // ── OPEN GROUP ─────────────────────────────────────────────────────────────
 window.openGroup=(gid,name,count)=>{
+  document.getElementById("grp-settings-btn").style.display="flex";
   document.getElementById("sidebar").classList.remove("open");
   currentChatId=gid;
   currentChatType="group";
@@ -497,6 +583,17 @@ function renderMsgs(msgs){
       msgContent=`<img src="${m.text.slice(7)}" style="max-width:200px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.text.slice(7)}','_blank')">`;
     } else if(m.text&&m.text.startsWith("https://")){
       msgContent=`<a href="${m.text}" target="_blank" style="color:#3effa0;word-break:break-all;">${m.text}</a><br><button onclick="window.open('${m.text}','_blank')" style="margin-top:8px;background:#3effa0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;color:#000;font-size:1rem;">👆 Join Call</button>`;
+    } else if(m.text&&m.text.startsWith("__STICKER__")){
+      const emoji=m.text.slice(11);
+      msgContent=`<span style="font-size:3rem;line-height:1">${emoji}</span>`;
+    } else if(m.text&&m.text.startsWith("__FILE__")){
+      const parts=m.text.slice(8).split("__");
+      const fname=parts[0];const fdata=parts.slice(1).join("__");
+      msgContent=`<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:1.5rem">📁</span><div><div style="font-weight:700;font-size:.9rem">${esc(fname)}</div><a href="${fdata}" download="${esc(fname)}" style="color:#3effa0;font-size:.8rem;font-weight:600;">⬇ Download</a></div></div>`;
+    } else if(m.uid==="__system__"&&m.text&&m.text.startsWith("__SYSTEM__")){
+      const sysmsg=m.text.slice(10);
+      html+=`<div style="text-align:center;color:var(--text2);font-size:.78rem;font-family:monospace;padding:6px;margin:4px 0">${esc(sysmsg)}</div>`;
+      continue;
     } else if(m.text&&m.text.startsWith("__JOIN_REQUEST__")){
       const parts=m.text.split("__");
       const reqId=parts[2];const reqName=parts[3];
@@ -531,6 +628,40 @@ window.sendMessage=async()=>{
 };
 
 // ── SEND PHOTO ─────────────────────────────────────────────────────────────
+window.toggleAttachMenu=()=>{
+  const m=document.getElementById("attach-menu");
+  m.style.display=m.style.display==="none"?"block":"none";
+};
+// Close attach menu when clicking outside
+document.addEventListener("click",e=>{
+  const menu=document.getElementById("attach-menu");
+  if(menu&&!menu.contains(e.target)&&!e.target.closest("[onclick*='toggleAttachMenu']")){
+    menu.style.display="none";
+  }
+});
+
+window.sendFile=async(input)=>{
+  if(!input.files||!input.files[0]||!currentChatId)return;
+  const file=input.files[0];
+  if(file.size>2*1024*1024)return showToast("File too large! Max 2MB");
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages":"chats/"+currentChatId+"/messages";
+    await push(ref(db,chatPath),{
+      text:"__FILE__"+file.name+"__"+e.target.result,
+      uid:myId,name:myName,ts:Date.now()
+    });
+  };
+  reader.readAsDataURL(file);
+  input.value="";
+};
+
+window.sendSticker=async(emoji)=>{
+  if(!currentChatId)return;
+  const chatPath=currentChatType==="group"?"groups/"+currentChatId+"/messages":"chats/"+currentChatId+"/messages";
+  await push(ref(db,chatPath),{text:"__STICKER__"+emoji,uid:myId,name:myName,ts:Date.now()});
+};
+
 window.sendPhoto=async(input)=>{
   if(!input.files||!input.files[0]||!currentChatId)return;
   const file=input.files[0];
@@ -545,6 +676,74 @@ window.sendPhoto=async(input)=>{
 };
 
 // ── ACCEPT/DECLINE MEMBER ─────────────────────────────────────────────────
+// ── GROUP SETTINGS (kick/mod) ──────────────────────────────────────────────
+window.openGroupSettings=async()=>{
+  if(currentChatType!=="group")return;
+  const g=allGroups.find(x=>x.gid===currentChatId);
+  if(!g)return;
+  const isOwner=g.owner===myId;
+  document.getElementById("grp-settings-title").textContent=g.name+" — Members";
+  const members=g.members?Object.values(g.members):[];
+  const mods=g.mods||{};
+  document.getElementById("grp-members-list").innerHTML=members.map(m=>{
+    const isMod=mods[m.uid];
+    const isThisOwner=g.owner===m.uid;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:6px">
+      <div style="width:36px;height:36px;border-radius:50%;background:${col(m.uid)};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">${av(m.name)}</div>
+      <div style="flex:1;font-weight:600">${esc(m.name)}${isThisOwner?' 👑':isMod?' 🛡️':''}</div>
+      ${isOwner&&!isThisOwner?`<button onclick="kickMember('${m.uid}','${esc(m.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 10px;color:#fff;font-size:.75rem;cursor:pointer;font-weight:700;">Kick</button>`:''}
+      ${isOwner&&!isThisOwner?`<button onclick="toggleMod('${m.uid}','${esc(m.name)}')" style="background:${isMod?'#ff4f6f':'#7c6fff'};border:none;border-radius:8px;padding:6px 10px;color:#fff;font-size:.75rem;cursor:pointer;font-weight:700;">${isMod?"Remove Mod":"Make Mod"}</button>`:''}
+    </div>`;
+  }).join("") || '<div style="color:var(--text2);text-align:center;padding:20px">No members yet</div>';
+  openModal("grp-settings-modal");
+};
+
+window.kickMember=async(uid,name)=>{
+  if(!confirm("Kick "+name+" from the group?"))return;
+  await set(ref(db,"groups/"+currentChatId+"/members/"+uid),null);
+  await push(ref(db,"groups/"+currentChatId+"/messages"),{
+    text:"__SYSTEM__ "+name+" was removed from the group.",
+    uid:"__system__",name:"System",ts:Date.now()
+  });
+  closeModal("grp-settings-modal");
+  showToast(name+" was kicked!");
+};
+
+window.toggleMod=async(uid,name)=>{
+  const g=allGroups.find(x=>x.gid===currentChatId);
+  const isMod=g&&g.mods&&g.mods[uid];
+  if(isMod){
+    await set(ref(db,"groups/"+currentChatId+"/mods/"+uid),null);
+    showToast(name+" is no longer a mod");
+  } else {
+    await set(ref(db,"groups/"+currentChatId+"/mods/"+uid),{name,uid});
+    showToast(name+" is now a mod 🛡️");
+  }
+  openGroupSettings();
+};
+
+// ── INVITE LINK ────────────────────────────────────────────────────────────
+window.copyInviteLink=(gid)=>{
+  const link=window.location.href.split("?")[0]+"?joingroup="+gid;
+  navigator.clipboard.writeText(link).then(()=>showToast("🔗 Invite link copied!")).catch(()=>{
+    prompt("Copy this invite link:",link);
+  });
+};
+
+// Check for invite link on load
+const urlParams=new URLSearchParams(window.location.search);
+const inviteGroupId=urlParams.get("joingroup");
+
+function checkInviteLink(){
+  if(inviteGroupId&&myId){
+    const g=allGroups.find(x=>x.gid===inviteGroupId);
+    if(g){
+      if(g.members&&g.members[myId])return showToast("You're already in "+g.name+"!");
+      if(confirm("Join group: "+g.name+"?")) window.requestJoin(inviteGroupId, g.name);
+    }
+  }
+}
+
 window.acceptMember=async(uid,name)=>{
   await update(ref(db,"groups/"+currentChatId+"/members/"+uid),{name,uid,joinedAt:Date.now()});
   await set(ref(db,"groups/"+currentChatId+"/requests/"+uid),null);
@@ -617,6 +816,7 @@ function showAdminPanel(){
       <button onclick="adminDeleteAllChats()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">🗑 Delete ALL Chats</button>
       <button onclick="adminDeleteAllUsers()" style="background:#ff4f6f;border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👤 Delete ALL Accounts</button>
       <button onclick="adminShowUsers()" style="background:var(--accent);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">👥 Manage Users</button>
+      <button onclick="adminViewChats()" style="background:#ffb84f;border:none;border-radius:10px;padding:12px;color:#000;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">💬 View All Chats</button>
       <button onclick="document.getElementById('admin-panel').remove()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">Close</button>
     </div>`;
   document.body.appendChild(panel);
@@ -642,17 +842,99 @@ window.adminDeleteAllUsers = async () => {
 
 window.adminShowUsers = async () => {
   const snap = await get(ref(db,"users"));
-  const users = Object.values(snap.val()||{}).filter(u=>u.uid!==myId);
-  if(!users.length) return showToast("No other users!");
+  const users = Object.values(snap.val()||{}).filter(u=>u&&u.uid&&u.name);
+  if(!users.length) return showToast("No users!");
   const panel = document.createElement("div");
   panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:90%;max-width:360px;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
   panel.innerHTML = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">👥 Manage Users</div>` +
-    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px">
-      <div style="flex:1;font-weight:600">${esc(u.name)}</div>
-      <button onclick="adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>
+    users.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--surface2);margin-bottom:8px;cursor:pointer" onclick="adminLoginAs('${u.uid}','${esc(u.name)}')">
+      <div class="av" style="background:${col(u.uid)};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0">${av(u.name)}</div>
+      <div style="flex:1;font-weight:600">${esc(u.name)}${u.uid===myId?'<span style="color:#3effa0;font-size:.7rem;margin-left:6px">(you)</span>':""}</div>
+      ${u.uid!==myId?`<button onclick="event.stopPropagation();adminDeleteUser('${u.uid}','${esc(u.name)}')" style="background:#ff4f6f;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">Delete</button>`:""}
     </div>`).join("") +
     `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
   document.body.appendChild(panel);
+};
+
+window.adminLoginAs = async (uid, name) => {
+  if(!confirm("Login as "+name+"?
+
+Your original account is saved. Tap '← Back to Admin' to return.")) return;
+  // Save original admin account
+  localStorage.setItem("blink_admin_backup_uid", myId);
+  localStorage.setItem("blink_admin_backup_name", myName);
+  localStorage.setItem("blink_admin","yes");
+  // Set offline for current
+  await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
+  // Switch to new user
+  localStorage.setItem("blink_uid", uid);
+  localStorage.setItem("blink_name", name);
+  // Close all panels
+  document.querySelectorAll("[style*='z-index:600'],[style*='z-index:500']").forEach(el=>el.remove());
+  showToast("Logged in as "+name+"!");
+  // Reload as that user
+  location.reload();
+};
+
+window.adminViewChats = async () => {
+  document.getElementById("admin-panel")?.remove();
+  const chatsSnap = await get(ref(db,"chats"));
+  const usersSnap = await get(ref(db,"users"));
+  const users = usersSnap.val()||{};
+  const chats = chatsSnap.val()||{};
+  
+  const panel = document.createElement("div");
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:600;width:92%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  
+  let html = `<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">💬 All Chats</div>`;
+  
+  if(!Object.keys(chats).length){
+    html += `<div style="color:var(--text2);text-align:center;padding:20px">No chats yet</div>`;
+  } else {
+    Object.entries(chats).forEach(([cid, chat])=>{
+      const uids = cid.split("__");
+      const name1 = users[uids[0]]?.name || uids[0].substring(0,8);
+      const name2 = users[uids[1]]?.name || uids[1].substring(0,8);
+      const msgs = chat.messages ? Object.values(chat.messages) : [];
+      const last = msgs.sort((a,b)=>b.ts-a.ts)[0];
+      html += `<div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:10px;">
+        <div style="font-weight:700;margin-bottom:6px">💬 ${esc(name1)} & ${esc(name2)}</div>
+        <div style="color:var(--text2);font-size:.8rem;margin-bottom:8px">${msgs.length} messages${last?` · Last: "${esc(last.text?.substring(0,30)||"📸 Photo")}"`:" "}</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="adminReadChat('${cid}')" style="flex:1;background:var(--accent);border:none;border-radius:8px;padding:7px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">👁 Read</button>
+          <button onclick="adminDeleteChat('${cid}')" style="flex:1;background:#ff4f6f;border:none;border-radius:8px;padding:7px;color:#fff;font-weight:700;cursor:pointer;font-size:.8rem">🗑 Delete</button>
+        </div>
+      </div>`;
+    });
+  }
+  
+  html += `<button onclick="this.parentElement.remove();showAdminPanel()" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+
+window.adminReadChat = async (cid) => {
+  const snap = await get(ref(db,"chats/"+cid+"/messages"));
+  const msgs = Object.values(snap.val()||{}).sort((a,b)=>a.ts-b.ts);
+  const panel = document.createElement("div");
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:2px solid #FFD700;border-radius:20px;padding:24px;z-index:700;width:92%;max-width:400px;max-height:85vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  let html = `<div style="font-size:1rem;font-weight:700;margin-bottom:14px">👁 Chat Messages</div>`;
+  msgs.forEach(m=>{
+    html += `<div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:8px;">
+      <div style="font-size:.75rem;color:#ffb84f;font-weight:700">${esc(m.name||"?")}</div>
+      <div style="font-size:.88rem;margin-top:4px">${m.text?.startsWith("__IMG__")?"📸 Image":esc(m.text?.substring(0,100))}</div>
+    </div>`;
+  });
+  html += `<button onclick="this.parentElement.remove()" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
+  panel.innerHTML = html;
+  document.body.appendChild(panel);
+};
+
+window.adminDeleteChat = async (cid) => {
+  if(!confirm("Delete this entire chat?")) return;
+  await set(ref(db,"chats/"+cid),null);
+  showToast("Chat deleted!");
+  adminViewChats();
 };
 
 window.adminDeleteUser = async (uid, name) => {
@@ -662,6 +944,27 @@ window.adminDeleteUser = async (uid, name) => {
   document.querySelectorAll("[style*='z-index:600']").forEach(el=>el.remove());
   adminShowUsers();
 };
+
+// Add back-to-admin button if we switched accounts
+function checkAdminBackup(){
+  const backupUid = localStorage.getItem("blink_admin_backup_uid");
+  const backupName = localStorage.getItem("blink_admin_backup_name");
+  if(backupUid && backupName){
+    const btn = document.createElement("button");
+    btn.textContent = "← Back to "+backupName;
+    btn.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FFD700,#FFA500);border:none;border-radius:10px;padding:8px 16px;color:#000;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;z-index:999;font-size:.85rem;box-shadow:0 4px 15px #FFD70066";
+    btn.onclick = async()=>{
+      await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
+      localStorage.setItem("blink_uid", backupUid);
+      localStorage.setItem("blink_name", backupName);
+      localStorage.removeItem("blink_admin_backup_uid");
+      localStorage.removeItem("blink_admin_backup_name");
+      localStorage.setItem("blink_admin","yes");
+      location.reload();
+    };
+    document.body.appendChild(btn);
+  }
+}
 
 // Check if already admin on load
 function checkAdminStatus(){
@@ -674,6 +977,7 @@ function checkAdminStatus(){
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
 document.getElementById("gate-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.checkGate();});
+document.getElementById("pin-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 document.getElementById("name-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.joinChat();});
 
 // ── PAGE VISIBILITY ────────────────────────────────────────────────────────
@@ -689,7 +993,10 @@ if(sn&&si){
   const uRef=ref(db,"users/"+myId);
   set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
   onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
-  enterApp();
+  enterApp(); // Skip gate and auth screens if already logged in
+} else {
+  // Show gate screen for new users
+  showScreen("gate-screen");
 }
 </script>
 </body>
