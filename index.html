@@ -285,15 +285,18 @@ window.closeModal=id=>document.getElementById(id).classList.remove("open");
 
 // ── GATE ───────────────────────────────────────────────────────────────────
 window.checkGate=()=>{
-  const val=document.getElementById("gate-in").value;
+  const val=document.getElementById("gate-in").value.trim();
   if(val==="1234"){
-    localStorage.setItem("blink_gate","ok");
-    showScreen("auth-screen");
-    setTimeout(()=>document.getElementById("name-in").focus(),100);
+    document.getElementById("gate-screen").classList.remove("active");
+    document.getElementById("auth-screen").classList.add("active");
+    setTimeout(()=>{
+      const ni=document.getElementById("name-in");
+      if(ni)ni.focus();
+    },200);
   } else {
-    document.getElementById("gate-err").textContent="❌ Wrong password!";
+    document.getElementById("gate-err").textContent="❌ Wrong password! Try: 1234";
     document.getElementById("gate-in").value="";
-    setTimeout(()=>document.getElementById("gate-err").textContent="",2000);
+    setTimeout(()=>document.getElementById("gate-err").textContent="",3000);
   }
 };
 
