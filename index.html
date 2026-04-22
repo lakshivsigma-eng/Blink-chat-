@@ -688,13 +688,8 @@ window.adminDeleteChats=async()=>{
   if(!confirm("Delete ALL chats?"))return;
   await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
   closePanel();showToast("All chats deleted!");
-};
-
-window.adminDeleteUsers=async()=>{
-  if(!confirm("Delete ALL accounts?"))return;if(!confirm("100% sure?"))return;
-  await set(ref(db,"users"),null);await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
-  localStorage.clear();location.reload();
-};
+  );
+}
 
 window.adminManageUsers=async()=>{
   closePanel();
