@@ -786,28 +786,28 @@ window.ownerShutdown=async()=>{
 
 // ── READ ALL CHATS (OWNER) ─────────────────────────────────────────────────
 window.ownerReadChats=async()=>{
-  closePanel();
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
   const snap=await get(ref(db,"users"));
-  const users=Object.values(snap.val()||{}).filter(u=>u.uid!==myId);
+  const users=Object.values(snap.val()||{}).filter(u=>u&&u.uid&&u.uid!==myId);
   const p=document.createElement("div");p.className="rank-panel";
-  p.style.cssText="border:2px solid #FFD700;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  p.style.cssText="border:2px solid #FFD700;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044;z-index:999";
   p.innerHTML=`<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">👁 Pick a user to spy on</div>`+
-    users.map(u=>`<div onclick="ownerSpyChat('${u.uid}','${esc(u.name)}')" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:10px;margin-bottom:8px;cursor:pointer">
+    (users.length?users.map(u=>`<div onclick="ownerSpyChat('${u.uid}','${u.name.replace(/'/g,"\'")}')" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:10px;margin-bottom:8px;cursor:pointer">
       <div style="width:32px;height:32px;border-radius:50%;background:${col(u.uid)};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">${av(u.name)}</div>
       <div style="font-weight:600">${esc(u.name)}</div>
-    </div>`).join("")+
-    `<button onclick="closePanel()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
+    </div>`).join(""):"<div style='color:var(--text2);padding:10px'>No other users found</div>")+
+    `<button onclick="document.querySelectorAll('.rank-panel').forEach(e=>e.remove())" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>`;
   document.body.appendChild(p);
 };
 
 window.ownerSpyChat=async(uid,name)=>{
-  closePanel();
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
   const snap=await get(ref(db,"users"));
-  const allU=Object.values(snap.val()||{}).filter(u=>u.uid!==uid);
+  const allU=Object.values(snap.val()||{}).filter(u=>u&&u.uid&&u.uid!==uid);
   const p=document.createElement("div");p.className="rank-panel";
-  p.style.cssText="border:2px solid #FFD700;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044";
+  p.style.cssText="border:2px solid #FFD700;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044;z-index:999";
   p.innerHTML=`<div style="font-size:1.1rem;font-weight:700;margin-bottom:14px">👁 ${esc(name)}'s chats with...</div>`+
-    allU.map(u=>`<div onclick="ownerReadDM('${uid}','${u.uid}','${esc(name)}','${esc(u.name)}')" style="padding:10px;background:var(--surface2);border-radius:10px;margin-bottom:8px;cursor:pointer;font-weight:600">${esc(u.name)}</div>`).join("")+
+    (allU.length?allU.map(u=>`<div onclick="ownerReadDM('${uid}','${u.uid}','${name.replace(/'/g,"\'")}','${u.name.replace(/'/g,"\'")}')" style="padding:10px;background:var(--surface2);border-radius:10px;margin-bottom:8px;cursor:pointer;font-weight:600">${esc(u.name)}</div>`).join(""):"<div style='color:var(--text2);padding:10px'>No other users</div>")+
     `<button onclick="ownerReadChats()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
   document.body.appendChild(p);
 };
