@@ -171,6 +171,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div class="tabs">
         <button class="tab active" onclick="switchTab('people')">👤 People</button>
         <button class="tab" onclick="switchTab('groups')">👥 Groups</button>
+        <button class="tab" onclick="switchTab('games')">🎮 Games</button>
       </div>
     </div>
     <div class="tab-panel active" id="tab-people">
@@ -185,6 +186,38 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
         <button onclick="openModal('create-grp-modal')" style="background:var(--accent);border:none;border-radius:10px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;flex-shrink:0;">+</button>
       </div>
       <div class="list" id="groups-list"><div class="empty">No groups yet</div></div>
+    </div>
+    <div class="tab-panel" id="tab-games">
+      <div class="list" style="padding:12px">
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px">Chat Commands</div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:8px;font-size:.85rem">
+          <div style="font-weight:700;margin-bottom:4px">🎲 Dice Roll</div>
+          <div style="color:var(--text2);font-size:.78rem">Type <b>/roll</b> in any chat</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:8px;font-size:.85rem">
+          <div style="font-weight:700;margin-bottom:4px">🪄 Magic 8 Ball</div>
+          <div style="color:var(--text2);font-size:.78rem">Type <b>/8ball</b> in any chat</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:8px;font-size:.85rem">
+          <div style="font-weight:700;margin-bottom:4px">🃏 Truth or Dare</div>
+          <div style="color:var(--text2);font-size:.78rem">Type <b>/truth</b> or <b>/dare</b> in any chat</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:8px;font-size:.85rem">
+          <div style="font-weight:700;margin-bottom:4px">🧠 Trivia</div>
+          <div style="color:var(--text2);font-size:.78rem">Type <b>/trivia</b> in any chat</div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text2);margin:14px 0 10px;font-weight:700;text-transform:uppercase;letter-spacing:1px">Group Games</div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:8px;font-size:.85rem">
+          <div style="font-weight:700;margin-bottom:4px">🎁 Secret Santa</div>
+          <div style="color:var(--text2);font-size:.78rem;margin-bottom:8px">Randomly assigns gift givers in a group</div>
+          <button onclick="startSecretSanta()" style="background:linear-gradient(135deg,#ff6fb0,#ff4f6f);border:none;border-radius:8px;padding:8px 14px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.82rem">🎁 Start Secret Santa</button>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:8px;font-size:.85rem">
+          <div style="font-weight:700;margin-bottom:4px">🎮 Tic Tac Toe</div>
+          <div style="color:var(--text2);font-size:.78rem;margin-bottom:8px">Challenge someone in your current chat</div>
+          <button onclick="startTicTacToe()" style="background:linear-gradient(135deg,#7c6fff,#a06fff);border:none;border-radius:8px;padding:8px 14px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.82rem">🎮 Start Game</button>
+        </div>
+      </div>
     </div>
     <div class="sid-bot">
       <div style="display:flex;gap:6px;margin-bottom:2px">
@@ -380,8 +413,8 @@ function enterApp(){
 }
 
 window.switchTab=tab=>{
-  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups"][i]===tab)});
-  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups"][i]==="tab-"+tab)});
+  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups","games"][i]===tab)});
+  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups","tab-games"][i]==="tab-"+tab)});
 };
 
 // ── USERS ──────────────────────────────────────────────────────────────────
@@ -541,7 +574,10 @@ function startChatListeners(){
       if(m.uid!==myId){
         if(m.text&&m.text.startsWith("https://meet.no42.org")){
           if(confirm("📹 "+(m.name||"Friend")+" is calling! Join now?"))window.open(m.text,"_blank");
-        } else if(m.uid!=="__system__"){notify("💬 "+(m.name||"Friend"),m.text);}
+        } else if(m.uid!=="__system__"){
+          notify("💬 "+(m.name||"Friend"),m.text);
+          if(navigator.vibrate)navigator.vibrate([100,50,100]);
+        }
       }
     }
     lastMsgCount=msgs.length;
@@ -573,6 +609,16 @@ function renderMsgs(msgs){
       msgContent=`<audio controls src="${m.text.slice(9)}" style="max-width:220px;border-radius:10px;"></audio>`;
     } else if(m.text&&m.text.startsWith("__IMG__")){
       msgContent=`<img src="${m.text.slice(7)}" style="max-width:200px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.text.slice(7)}','_blank')">`;
+    } else if(m.text&&m.text.startsWith("__SPOTIFY__")){
+      const url=m.text.slice(11);
+      msgContent=`<div style="background:#1DB954;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:1.5rem">🎵</span><div><div style="font-weight:700;color:#fff;font-size:.9rem">Spotify Link</div><a href="${url}" target="_blank" style="color:#fff;font-size:.8rem;opacity:.8">${url.length>40?url.slice(0,40)+"...":url}</a></div></div>`;
+    } else if(m.text&&m.text.startsWith("__TTT__")){
+      const state=JSON.parse(m.text.slice(7));
+      const {board,turn,done}=state;
+      const sym=["❌","⭕"];
+      const cells=board.map((c,i)=>`<button onclick="tttMove('${m._key}',${i})" style="width:56px;height:56px;background:${c?"var(--surface)":"var(--surface2)"};border:2px solid var(--border);border-radius:10px;font-size:1.6rem;cursor:${done||c?"default":"pointer"};display:flex;align-items:center;justify-content:center;">${c==="X"?"❌":c==="O"?"⭕":""}</button>`).join("");
+      const status=done==="draw"?"🤝 Draw!":(done&&done.startsWith("win:"))?"🏆 "+(done.slice(4)==="X"?"❌":"⭕")+" wins!":"Turn: "+(turn==="X"?"❌":"⭕");
+      msgContent=`<div style="text-align:center"><div style="font-weight:700;margin-bottom:8px;font-size:.9rem">${status}</div><div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center">${cells}</div></div>`;
     } else if(m.text&&m.text.startsWith("__FILE__")){
       const parts=m.text.slice(8).split("|||");
       msgContent=`<div style="display:flex;align-items:center;gap:10px"><span style="font-size:1.5rem">📁</span><div><div style="font-weight:700;font-size:.9rem">${esc(parts[0])}</div><a href="${parts[1]}" download="${esc(parts[0])}" style="color:#3effa0;font-size:.8rem">⬇ Download</a></div></div>`;
@@ -604,6 +650,52 @@ function chatPath(){return currentChatType==="group"?"groups/"+currentChatId+"/m
 window.sendMessage=async()=>{
   const input=document.getElementById("msg-in");const text=input.value.trim();
   if(!text||!currentChatId)return;input.value="";
+  // Handle game commands
+  if(text==="/roll"){
+    const n=Math.floor(Math.random()*6)+1;
+    const faces=["","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣"];
+    await push(ref(db,chatPath()),{text:`🎲 ${myName} rolled a ${faces[n]} (${n})!`,uid:"__system__",name:"System",ts:Date.now()});
+    return;
+  }
+  if(text==="/8ball"){
+    const answers=["✅ Yes, definitely!","✅ It is certain!","✅ Without a doubt!","🤔 Ask again later...","🤔 Cannot predict now...","🤔 Concentrate and ask again","❌ Don't count on it","❌ My reply is no","❌ Very doubtful"];
+    const ans=answers[Math.floor(Math.random()*answers.length)];
+    await push(ref(db,chatPath()),{text:`🪄 Magic 8 Ball says: ${ans}`,uid:"__system__",name:"System",ts:Date.now()});
+    return;
+  }
+  if(text==="/truth"){
+    const truths=["What's your most embarrassing moment?","What's the last lie you told?","What's your biggest fear?","Who do you have a crush on?","What's the worst thing you've ever done?","What's a secret you've never told anyone?","What's your most childish habit?","What's the most trouble you've been in?"];
+    const t=truths[Math.floor(Math.random()*truths.length)];
+    await push(ref(db,chatPath()),{text:`🃏 TRUTH: ${t}`,uid:"__system__",name:"System",ts:Date.now()});
+    return;
+  }
+  if(text==="/dare"){
+    const dares=["Do your best dance move!","Send a funny selfie!","Say the alphabet backwards!","Do 10 push-ups!","Speak in an accent for the next 5 minutes!","Tell an embarrassing story!","Imitate someone in the chat!","Say something nice to everyone here!"];
+    const d=dares[Math.floor(Math.random()*dares.length)];
+    await push(ref(db,chatPath()),{text:`🃏 DARE: ${d}`,uid:"__system__",name:"System",ts:Date.now()});
+    return;
+  }
+  if(text==="/trivia"){
+    const questions=[
+      {q:"What planet is closest to the Sun?",a:"Mercury"},
+      {q:"How many sides does a hexagon have?",a:"6"},
+      {q:"What is the capital of France?",a:"Paris"},
+      {q:"What is 8 x 7?",a:"56"},
+      {q:"What animal is the fastest on land?",a:"Cheetah"},
+      {q:"How many continents are there?",a:"7"},
+      {q:"What colour is the sky on a clear day?",a:"Blue"},
+      {q:"Who invented the telephone?",a:"Alexander Graham Bell"},
+    ];
+    const q=questions[Math.floor(Math.random()*questions.length)];
+    await push(ref(db,chatPath()),{text:`🧠 TRIVIA: ${q.q}
+(Reply with your answer! Answer: ||${q.a}||)`,uid:"__system__",name:"System",ts:Date.now()});
+    return;
+  }
+  // Handle Spotify links
+  if(text.includes("open.spotify.com")){
+    await push(ref(db,chatPath()),{text:"__SPOTIFY__"+text,uid:myId,name:myName,ts:Date.now()});
+    return;
+  }
   await push(ref(db,chatPath()),{text,uid:myId,name:myName,ts:Date.now()});
   const tp=currentChatType==="group"?"groups/"+currentChatId+"/typing/"+myId:"typing/"+currentChatId+"/"+myId;
   set(ref(db,tp),null);
@@ -989,6 +1081,52 @@ function applyPicToAv(el, uid, name, pic){
     el.textContent=av(name);
   }
 }
+
+// ── GAMES ─────────────────────────────────────────────────────────────────
+window.startSecretSanta=()=>{
+  if(currentChatType!=="group")return showToast("Open a group chat first!");
+  const g=allGroups.find(x=>x.gid===currentChatId);
+  if(!g)return showToast("Open a group chat first!");
+  const members=Object.values(g.members||{});
+  if(members.length<2)return showToast("Need at least 2 members!");
+  const shuffled=[...members].sort(()=>Math.random()-0.5);
+  let msg="🎁 SECRET SANTA ASSIGNMENTS:
+";
+  shuffled.forEach((m,i)=>{
+    const gives=shuffled[(i+1)%shuffled.length];
+    msg+=`🎄 ${m.name} → gives to ${gives.name}
+`;
+  });
+  push(ref(db,chatPath()),{text:msg,uid:"__system__",name:"System",ts:Date.now()});
+  showToast("Secret Santa started! 🎁");
+  switchTab("people");
+};
+
+window.startTicTacToe=()=>{
+  if(!currentChatId)return showToast("Open a chat first!");
+  const board=["","","","","","","","",""];
+  const state=JSON.stringify({board,turn:"X",done:false});
+  push(ref(db,chatPath()),{text:"__TTT__"+state,uid:myId,name:myName,ts:Date.now()});
+  switchTab("people");
+  showToast("Tic Tac Toe started! ❌");
+};
+
+window.tttMove=async(msgKey,idx)=>{
+  const msgRef=ref(db,chatPath()+"/"+msgKey);
+  const snap=await get(msgRef);
+  const m=snap.val();if(!m)return;
+  const state=JSON.parse(m.text.slice(7));
+  if(state.done||state.board[idx])return;
+  const isX=state.turn==="X";
+  state.board[idx]=state.turn;
+  // Check win
+  const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const winner=wins.find(([a,b,c])=>state.board[a]&&state.board[a]===state.board[b]&&state.board[a]===state.board[c]);
+  if(winner)state.done="win:"+state.turn;
+  else if(!state.board.includes(""))state.done="draw";
+  else state.turn=isX?"O":"X";
+  await update(msgRef,{text:"__TTT__"+JSON.stringify(state)});
+};
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
