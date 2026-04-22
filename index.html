@@ -325,11 +325,29 @@ window.leaveChat=async()=>{
   showScreen("auth-screen");
 };
 
+// ── FIX: deleteMyAccount now goes back to gate screen instead of blank reload ──
 window.deleteMyAccount=async()=>{
   if(!confirm("Delete your account permanently?"))return;
-  await set(ref(db,"users/"+myId),null);
-  localStorage.removeItem("blink_uid");localStorage.removeItem("blink_name");
-  location.reload();
+  if(myId) await set(ref(db,"users/"+myId),null);
+  // Clear all local data
+  localStorage.removeItem("blink_uid");
+  localStorage.removeItem("blink_name");
+  localStorage.removeItem("blink_admin");
+  localStorage.removeItem("blink_owner");
+  // Reset state
+  myId=null;myName=null;isAdmin=false;isOwner=false;
+  currentChatId=null;currentChatType=null;currentPartnerId=null;
+  // Stop listeners
+  if(chatListener){off(chatListener);chatListener=null;}
+  if(typingListener){off(typingListener);typingListener=null;}
+  // Reset UI
+  document.getElementById("chat-area").style.display="none";
+  document.getElementById("chat-placeholder").style.display="flex";
+  document.getElementById("gate-in").value="";
+  document.getElementById("name-in").value="";
+  // Go back to gate so they can make a new account
+  showScreen("gate-screen");
+  showToast("Account deleted! Enter password to make a new one.");
 };
 
 // ── ENTER APP ──────────────────────────────────────────────────────────────
@@ -450,7 +468,6 @@ function checkInviteLink(){
 // ── OPEN DM ────────────────────────────────────────────────────────────────
 window.openDM=(uid,name)=>{
   document.getElementById("sidebar").classList.remove("open");
-  // Stop previous listener
   if(chatListener){off(chatListener);chatListener=null;}
   if(typingListener){off(typingListener);typingListener=null;}
   currentChatId=chatId(myId,uid);
@@ -688,8 +705,15 @@ window.adminDeleteChats=async()=>{
   if(!confirm("Delete ALL chats?"))return;
   await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
   closePanel();showToast("All chats deleted!");
-  );
-}
+};
+
+window.adminDeleteUsers=async()=>{
+  if(!confirm("Delete ALL accounts?"))return;if(!confirm("100% sure?"))return;
+  await set(ref(db,"users"),null);await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
+  localStorage.clear();
+  showScreen("gate-screen");
+  document.getElementById("gate-in").value="";
+};
 
 window.adminManageUsers=async()=>{
   closePanel();
@@ -778,7 +802,6 @@ window.ownerReadChats=async()=>{
 
 window.ownerSpyChat=async(uid,name)=>{
   closePanel();
-  // Read DMs between this user and ALL other users
   const snap=await get(ref(db,"users"));
   const allU=Object.values(snap.val()||{}).filter(u=>u.uid!==uid);
   const p=document.createElement("div");p.className="rank-panel";
@@ -811,7 +834,6 @@ function checkRankStatus(){
     isAdmin=true;
     document.getElementById("my-nm").innerHTML=myName+' <span class="admin-tag">ADMIN</span>';
   }
-  // Also check from Firebase in case rank was assigned by another owner
   get(ref(db,"users/"+myId)).then(snap=>{
     const u=snap.val();
     if(u&&u.isOwner&&!isOwner){
@@ -835,14 +857,29 @@ document.addEventListener("visibilitychange",()=>{
 });
 
 // ── AUTO REJOIN ────────────────────────────────────────────────────────────
+// Wait for shutdown check first, then decide which screen to show
 const sn=localStorage.getItem("blink_name"),si=localStorage.getItem("blink_uid");
-if(sn&&si){
-  myId=si;myName=sn;
-  const uRef=ref(db,"users/"+myId);
-  set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
-  onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
-  enterApp();
-}
+get(ref(db,"config/shutdown")).then(snap=>{
+  if(snap.val()===true){
+    showScreen("shutdown-screen");
+  } else if(sn&&si){
+    myId=si;myName=sn;
+    const uRef=ref(db,"users/"+myId);
+    set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
+    onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
+    enterApp();
+  } else {
+    showScreen("gate-screen");
+  }
+}).catch(()=>{
+  // If Firebase fails to load, still show gate screen instead of blank
+  if(sn&&si){
+    myId=si;myName=sn;
+    enterApp();
+  } else {
+    showScreen("gate-screen");
+  }
+});
 </script>
 </body>
 </html>
