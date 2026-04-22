@@ -690,7 +690,9 @@ window.closePanel=()=>document.querySelectorAll(".rank-panel").forEach(e=>e.remo
 window.unlockAdmin=async()=>{
   if(isAdmin||isOwner){showAdminPanel();return;}
   const pass=prompt("Admin password:");
-  if(pass!=="admin")return showToast("❌ Wrong password!");
+  const snap=await get(ref(db,"config/adminPassword"));
+  const correctPw=snap.val()||"admin";
+  if(pass!==correctPw)return showToast("❌ Wrong password!");
   isAdmin=true;localStorage.setItem("blink_admin","yes");
   await update(ref(db,"users/"+myId),{isAdmin:true});
   document.getElementById("my-nm").innerHTML=myName+' <span class="admin-tag">ADMIN</span>';
@@ -702,7 +704,8 @@ function showAdminPanel(){
     panelBtn("🗑 Delete ALL Chats","#ff4f6f","#fff","adminDeleteChats()")+
     panelBtn("👤 Delete ALL Accounts","#ff4f6f","#fff","adminDeleteUsers()")+
     panelBtn("👥 Manage Users","var(--accent)","#fff","adminManageUsers()")+
-    panelBtn("⭐ Make Someone Admin","#7c6fff","#fff","adminPromote()")
+    panelBtn("⭐ Make Someone Admin","#7c6fff","#fff","adminPromote()")+
+    panelBtn("🔑 Change Admin Password","#ff4f6f","#fff","changeAdminPw()")
   );
 }
 
@@ -710,7 +713,9 @@ function showAdminPanel(){
 window.unlockOwner=async()=>{
   if(isOwner){showOwnerPanel();return;}
   const pass=prompt("Owner password:");
-  if(pass!=="owner")return showToast("❌ Wrong password!");
+  const snap=await get(ref(db,"config/ownerPassword"));
+  const correctPw=snap.val()||"owner";
+  if(pass!==correctPw)return showToast("❌ Wrong password!");
   isOwner=true;isAdmin=true;localStorage.setItem("blink_owner","yes");
   await update(ref(db,"users/"+myId),{isOwner:true,isAdmin:true});
   document.getElementById("my-nm").innerHTML=myName+' <span class="owner-tag">👑 OWNER</span>';
@@ -721,6 +726,8 @@ function showOwnerPanel(){
   makePanel("👑 Owner Panel","#FFD700",
     panelBtn("👁 Read All Chats","linear-gradient(135deg,#FFD700,#FFA500)","#000","ownerReadChats()")+
     panelBtn("🔑 Change App Password","linear-gradient(135deg,#FFD700,#FFA500)","#000","ownerChangePw()")+
+    panelBtn("🔑 Change Admin Password","linear-gradient(135deg,#FFD700,#FFA500)","#000","changeAdminPw()")+
+    panelBtn("🔑 Change Owner Password","linear-gradient(135deg,#FFD700,#FFA500)","#000","changeOwnerPw()")+
     panelBtn("🚫 Shutdown App","#ff4f6f","#fff","ownerShutdown()")+
     panelBtn("⭐ Make Someone Owner","linear-gradient(135deg,#FFD700,#FFA500)","#000","ownerPromote()")+
     panelBtn("⭐ Make Someone Admin","#7c6fff","#fff","adminPromote()")+
@@ -799,6 +806,20 @@ window.ownerRemoveAdmin=async()=>{
   if(!u)return showToast("User not found!");
   await update(ref(db,"users/"+u.uid),{isAdmin:false,isOwner:false});
   showToast(u.name+"'s rank removed!");
+};
+
+window.changeAdminPw=async()=>{
+  const newPw=prompt("Enter NEW Admin password:");
+  if(!newPw||newPw.length<2)return showToast("Too short!");
+  await set(ref(db,"config/adminPassword"),newPw);
+  showToast("✅ Admin password changed to: "+newPw);closePanel();
+};
+
+window.changeOwnerPw=async()=>{
+  const newPw=prompt("Enter NEW Owner password:");
+  if(!newPw||newPw.length<2)return showToast("Too short!");
+  await set(ref(db,"config/ownerPassword"),newPw);
+  showToast("✅ Owner password changed to: "+newPw);closePanel();
 };
 
 window.ownerChangePw=async()=>{
