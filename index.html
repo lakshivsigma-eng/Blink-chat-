@@ -815,13 +815,17 @@ window.ownerSpyChat=async(uid,name)=>{
 window.ownerReadDM=async(uid1,uid2,name1,name2)=>{
   closePanel();
   const cid=chatId(uid1,uid2);
-  const snap=await get(query(ref(db,"chats/"+cid+"/messages"),orderByChild("ts"),limitToLast(50)));
-  const msgs=Object.entries(snap.val()||{}).map(([k,v])=>({...v})).sort((a,b)=>a.ts-b.ts);
+  const snap=await get(ref(db,"chats/"+cid+"/messages"));
+  const raw=snap.val()||{};
+  const msgs=Object.values(raw).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-50);
   const p=document.createElement("div");p.className="rank-panel";
   p.style.cssText="border:2px solid #FFD700;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044;text-align:left";
-  p.innerHTML=`<div style="font-size:1rem;font-weight:700;margin-bottom:14px;text-align:center">👁 ${esc(name1)} ↔ ${esc(name2)}</div>`+
-    (msgs.length?msgs.map(m=>`<div style="margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:8px"><span style="font-weight:700;color:${col(m.uid||'x')}">${esc(m.name||"?")}:</span> ${m.text&&m.text.startsWith("__IMG__")?"[Image]":m.text&&m.text.startsWith("__FILE__")?"[File]":esc(m.text)} <span style="font-size:.68rem;color:var(--text2)">${timeAgo(m.ts)}</span></div>`).join(""):"<div style='color:var(--text2);text-align:center;padding:20px'>No messages</div>")+
-    `<button onclick="ownerSpyChat('${uid1}','${esc(name1)}')" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  const rows=msgs.length?msgs.map(m=>{
+    const txt=m.text&&m.text.startsWith("__IMG__")?"[📸 Image]":m.text&&m.text.startsWith("__FILE__")?"[📁 File]":m.text&&m.text.startsWith("__STICKER__")?m.text.slice(11):(m.text||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return`<div style="margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:8px"><span style="font-weight:700;color:${col(m.uid||'x')}">${(m.name||"?").replace(/</g,"&lt;")}:</span> ${txt} <span style="font-size:.68rem;color:var(--text2)">${timeAgo(m.ts)}</span></div>`;
+  }).join(""):"<div style='color:var(--text2);text-align:center;padding:20px'>No messages between these two</div>";
+  p.innerHTML=`<div style="font-size:1rem;font-weight:700;margin-bottom:14px;text-align:center">👁 ${name1} ↔ ${name2}</div>`+rows+
+    `<button onclick="ownerSpyChat('${uid1}','${name1}')" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
   document.body.appendChild(p);
 };
 
