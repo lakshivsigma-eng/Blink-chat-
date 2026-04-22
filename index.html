@@ -9,6 +9,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d0d14;--surface:#13131f;--surface2:#1c1c2e;--border:#252538;--accent:#7c6fff;--accent2:#ff6fb0;--text:#e2e2f0;--text2:#7878a0;--green:#3effa0}
+body.light{--bg:#f0f0f8;--surface:#ffffff;--surface2:#e8e8f0;--border:#d0d0e0;--accent:#7c6fff;--accent2:#ff6fb0;--text:#1a1a2e;--text2:#6060a0;--green:#00a060}
 html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;background:var(--bg);color:var(--text)}
 .screen{display:none;position:fixed;inset:0}.screen.active{display:flex}
 #gate-screen,#auth-screen,#shutdown-screen{align-items:center;justify-content:center;background:var(--bg);flex-direction:column}
@@ -186,6 +187,10 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div class="list" id="groups-list"><div class="empty">No groups yet</div></div>
     </div>
     <div class="sid-bot">
+      <div style="display:flex;gap:6px;margin-bottom:2px">
+        <button onclick="toggleTheme()" id="theme-btn" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🌙 Dark</button>
+        <button onclick="changeProfilePic()" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🖼 Pic</button>
+      </div>
       <button class="del-btn" onclick="deleteMyAccount()">🗑 Delete My Account</button>
       <div class="secret-btns">
         <button class="admin-btn" onclick="unlockAdmin()">⚙</button>
@@ -223,6 +228,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
           </div>
         </div>
         <input id="msg-in" type="text" placeholder="Type a message…">
+        <button id="voice-btn" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="event.preventDefault();startRecording()" ontouchend="event.preventDefault();stopRecording()" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;width:46px;height:46px;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s;">🎤</button>
         <button class="send-btn" onclick="sendMessage()">
           <svg width="20" height="20" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
         </button>
@@ -353,8 +359,17 @@ window.deleteMyAccount=async()=>{
 // ── ENTER APP ──────────────────────────────────────────────────────────────
 function enterApp(){
   document.getElementById("my-nm").textContent=myName;
-  document.getElementById("my-av").textContent=av(myName);
-  document.getElementById("my-av").style.background=col(myId);
+  const myAvEl=document.getElementById("my-av");
+  const savedPic=localStorage.getItem("blink_pic_"+myId);
+  if(savedPic){
+    myAvEl.style.backgroundImage=`url(${savedPic})`;
+    myAvEl.style.backgroundSize="cover";
+    myAvEl.style.backgroundPosition="center";
+    myAvEl.textContent="";
+  } else {
+    myAvEl.textContent=av(myName);
+    myAvEl.style.background=col(myId);
+  }
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
   checkRankStatus();
@@ -389,7 +404,7 @@ function renderUsers(filter){
   if(!f.length){list.innerHTML=`<div class="empty">${allUsers.length===0?"No one here yet!":"No users found"}</div>`;return;}
   list.innerHTML=f.map(u=>`
     <div class="item" ontouchend="event.preventDefault();openDM('${u.uid}','${esc(u.name)}')" onclick="openDM('${u.uid}','${esc(u.name)}')">
-      <div class="av" style="background:${col(u.uid)}">${av(u.name)}</div>
+      <div class="av" style="background:${col(u.uid)};${u.pic?`background-image:url(${u.pic});background-size:cover;background-position:center`:''}">${u.pic?'':av(u.name)}</div>
       <div class="item-info">
         <div class="item-name">${esc(u.name)}${u.isOwner?'<span class="owner-tag">👑 OWNER</span>':u.isAdmin?'<span class="admin-tag">ADMIN</span>':''}</div>
         <div class="item-sub">${u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div>
@@ -554,7 +569,9 @@ function renderMsgs(msgs){
     const time=mine?"font-size:.68rem;margin-top:4px;color:#aaa;text-align:right;font-family:monospace":"font-size:.68rem;margin-top:4px;color:#777;text-align:right;font-family:monospace";
     const ns=mine?"text-align:right;font-size:.68rem;font-weight:700;color:#7c6fff;margin-bottom:2px;font-family:monospace;text-transform:uppercase":"text-align:left;font-size:.68rem;font-weight:700;color:#ff6fb0;margin-bottom:2px;font-family:monospace;text-transform:uppercase";
     let msgContent="";
-    if(m.text&&m.text.startsWith("__IMG__")){
+    if(m.text&&m.text.startsWith("__AUDIO__")){
+      msgContent=`<audio controls src="${m.text.slice(9)}" style="max-width:220px;border-radius:10px;"></audio>`;
+    } else if(m.text&&m.text.startsWith("__IMG__")){
       msgContent=`<img src="${m.text.slice(7)}" style="max-width:200px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.text.slice(7)}','_blank')">`;
     } else if(m.text&&m.text.startsWith("__FILE__")){
       const parts=m.text.slice(8).split("|||");
@@ -835,7 +852,7 @@ window.ownerReadDM=async(uid1,uid2,name1,name2)=>{
   const p=document.createElement("div");p.className="rank-panel";
   p.style.cssText="border:2px solid #FFD700;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #FFD70044;text-align:left";
   const rows=msgs.length?msgs.map(m=>{
-    const txt=m.text&&m.text.startsWith("__IMG__")?"[📸 Image]":m.text&&m.text.startsWith("__FILE__")?"[📁 File]":m.text&&m.text.startsWith("__STICKER__")?m.text.slice(11):(m.text||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const txt=m.text&&m.text.startsWith("__IMG__")?"[📸 Image]":m.text&&m.text.startsWith("__FILE__")?"[📁 File]":m.text&&m.text.startsWith("__AUDIO__")?"[🎤 Voice]":m.text&&m.text.startsWith("__STICKER__")?m.text.slice(11):(m.text||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     return`<div style="margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:8px"><span style="font-weight:700;color:${col(m.uid||'x')}">${(m.name||"?").replace(/</g,"&lt;")}:</span> ${txt} <span style="font-size:.68rem;color:var(--text2)">${timeAgo(m.ts)}</span></div>`;
   }).join(""):"<div style='color:var(--text2);text-align:center;padding:20px'>No messages between these two</div>";
   p.innerHTML=`<div style="font-size:1rem;font-weight:700;margin-bottom:14px;text-align:center">👁 ${name1} ↔ ${name2}</div>`+rows+
@@ -862,6 +879,94 @@ function checkRankStatus(){
       document.getElementById("my-nm").innerHTML=myName+' <span class="admin-tag">ADMIN</span>';
     }
   });
+}
+
+// ── VOICE MESSAGES ────────────────────────────────────────────────────────
+let mediaRecorder=null,audioChunks=[];
+
+window.startRecording=async()=>{
+  if(!currentChatId)return showToast("Open a chat first!");
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    audioChunks=[];
+    mediaRecorder=new MediaRecorder(stream);
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
+    mediaRecorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(audioChunks,{type:"audio/webm"});
+      if(blob.size>2*1024*1024)return showToast("Voice too long! Max ~2min");
+      const reader=new FileReader();
+      reader.onload=async e=>{
+        await push(ref(db,chatPath()),{text:"__AUDIO__"+e.target.result,uid:myId,name:myName,ts:Date.now()});
+      };
+      reader.readAsDataURL(blob);
+    };
+    mediaRecorder.start();
+    document.getElementById("voice-btn").style.background="#ff4f6f";
+    document.getElementById("voice-btn").textContent="⏹";
+  } catch(e){
+    showToast("Microphone not allowed!");
+  }
+};
+
+window.stopRecording=()=>{
+  if(mediaRecorder&&mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    document.getElementById("voice-btn").style.background="var(--surface2)";
+    document.getElementById("voice-btn").textContent="🎤";
+  }
+};
+
+// ── THEME TOGGLE ──────────────────────────────────────────────────────────
+function applyTheme(light){
+  document.body.classList.toggle("light", light);
+  const btn=document.getElementById("theme-btn");
+  if(btn) btn.textContent=light?"☀️ Light":"🌙 Dark";
+}
+window.toggleTheme=()=>{
+  const isLight=!document.body.classList.contains("light");
+  localStorage.setItem("blink_theme", isLight?"light":"dark");
+  applyTheme(isLight);
+};
+// Apply saved theme on load
+applyTheme(localStorage.getItem("blink_theme")==="light");
+
+// ── PROFILE PICTURE ────────────────────────────────────────────────────────
+window.changeProfilePic=()=>{
+  const input=document.createElement("input");
+  input.type="file";input.accept="image/*";
+  input.onchange=async()=>{
+    const file=input.files[0];
+    if(!file)return;
+    if(file.size>1*1024*1024)return showToast("Image too large! Max 1MB");
+    const reader=new FileReader();
+    reader.onload=async e=>{
+      const data=e.target.result;
+      localStorage.setItem("blink_pic_"+myId, data);
+      await update(ref(db,"users/"+myId),{pic:data});
+      // Update avatar in sidebar
+      const avEl=document.getElementById("my-av");
+      avEl.style.backgroundImage=`url(${data})`;
+      avEl.style.backgroundSize="cover";
+      avEl.style.backgroundPosition="center";
+      avEl.textContent="";
+      showToast("Profile picture updated!");
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+};
+
+function applyPicToAv(el, uid, name, pic){
+  if(pic){
+    el.style.backgroundImage=`url(${pic})`;
+    el.style.backgroundSize="cover";
+    el.style.backgroundPosition="center";
+    el.textContent="";
+  } else {
+    el.style.backgroundImage="";
+    el.textContent=av(name);
+  }
 }
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
