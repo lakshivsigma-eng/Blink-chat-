@@ -1139,29 +1139,18 @@ document.addEventListener("visibilitychange",()=>{
 });
 
 // ── AUTO REJOIN ────────────────────────────────────────────────────────────
-// Wait for shutdown check first, then decide which screen to show
 const sn=localStorage.getItem("blink_name"),si=localStorage.getItem("blink_uid");
+// Show SOMETHING immediately — never leave a blank screen
+if(sn&&si){
+  myId=si;myName=sn;
+  enterApp();
+} else {
+  showScreen("gate-screen");
+}
+// Then check shutdown status in background
 get(ref(db,"config/shutdown")).then(snap=>{
-  if(snap.val()===true){
-    showScreen("shutdown-screen");
-  } else if(sn&&si){
-    myId=si;myName=sn;
-    const uRef=ref(db,"users/"+myId);
-    set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
-    onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
-    enterApp();
-  } else {
-    showScreen("gate-screen");
-  }
-}).catch(()=>{
-  // If Firebase fails to load, still show gate screen instead of blank
-  if(sn&&si){
-    myId=si;myName=sn;
-    enterApp();
-  } else {
-    showScreen("gate-screen");
-  }
-});
+  if(snap.val()===true) showScreen("shutdown-screen");
+}).catch(()=>{});
 </script>
 </body>
 </html>
