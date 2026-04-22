@@ -687,8 +687,7 @@ window.sendMessage=async()=>{
       {q:"Who invented the telephone?",a:"Alexander Graham Bell"},
     ];
     const q=questions[Math.floor(Math.random()*questions.length)];
-    await push(ref(db,chatPath()),{text:`🧠 TRIVIA: ${q.q}
-(Reply with your answer! Answer: ||${q.a}||)`,uid:"__system__",name:"System",ts:Date.now()});
+    await push(ref(db,chatPath()),{text:"🧠 TRIVIA: "+q.q+" (Answer: "+q.a+")",uid:"__system__",name:"System",ts:Date.now()});
     return;
   }
   // Handle Spotify links
@@ -1090,12 +1089,10 @@ window.startSecretSanta=()=>{
   const members=Object.values(g.members||{});
   if(members.length<2)return showToast("Need at least 2 members!");
   const shuffled=[...members].sort(()=>Math.random()-0.5);
-  let msg="🎁 SECRET SANTA ASSIGNMENTS:
-";
+  let msg="🎁 SECRET SANTA ASSIGNMENTS: ";
   shuffled.forEach((m,i)=>{
     const gives=shuffled[(i+1)%shuffled.length];
-    msg+=`🎄 ${m.name} → gives to ${gives.name}
-`;
+    msg+="🎄 "+m.name+" gives to "+gives.name+" | ";
   });
   push(ref(db,chatPath()),{text:msg,uid:"__system__",name:"System",ts:Date.now()});
   showToast("Secret Santa started! 🎁");
