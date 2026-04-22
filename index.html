@@ -468,36 +468,50 @@ function checkInviteLink(){
 // ── OPEN DM ────────────────────────────────────────────────────────────────
 window.openDM=(uid,name)=>{
   document.getElementById("sidebar").classList.remove("open");
+  // Fully stop old listeners before switching
   if(chatListener){off(chatListener);chatListener=null;}
   if(typingListener){off(typingListener);typingListener=null;}
+  // Clear typing indicator and messages immediately
+  document.getElementById("msgs").innerHTML="";
+  document.getElementById("typing-indicator").innerHTML="";
+  lastMsgCount=0;
+  // Set new chat state
   currentChatId=chatId(myId,uid);
   currentChatType="dm";
   currentPartnerId=uid;
+  // Update header
   document.getElementById("chat-nm").textContent=name;
   document.getElementById("chat-sub").textContent="";
   const cavEl=document.getElementById("chat-av");
   cavEl.textContent=av(name);cavEl.style.background=col(uid);cavEl.className="";
-  document.getElementById("msgs").innerHTML="";
+  // Show chat area
   document.getElementById("chat-placeholder").style.display="none";
   document.getElementById("chat-area").style.display="flex";
-  lastMsgCount=0;
+  // Start fresh listeners
   startChatListeners();
 };
 
 // ── OPEN GROUP ─────────────────────────────────────────────────────────────
 window.openGroup=(gid,name,count)=>{
   document.getElementById("sidebar").classList.remove("open");
+  // Fully stop old listeners before switching
   if(chatListener){off(chatListener);chatListener=null;}
   if(typingListener){off(typingListener);typingListener=null;}
+  // Clear typing indicator and messages immediately
+  document.getElementById("msgs").innerHTML="";
+  document.getElementById("typing-indicator").innerHTML="";
+  lastMsgCount=0;
+  // Set new chat state
   currentChatId=gid;currentChatType="group";currentPartnerId=null;
+  // Update header
   document.getElementById("chat-nm").textContent=name;
   document.getElementById("chat-sub").textContent=count+" members";
   const cavEl=document.getElementById("chat-av");
   cavEl.textContent=av(name);cavEl.style.background=col(gid);cavEl.className="grp";
-  document.getElementById("msgs").innerHTML="";
+  // Show chat area
   document.getElementById("chat-placeholder").style.display="none";
   document.getElementById("chat-area").style.display="flex";
-  lastMsgCount=0;
+  // Start fresh listeners
   startChatListeners();
 };
 
