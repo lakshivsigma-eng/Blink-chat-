@@ -439,7 +439,7 @@ function loadUsers(){
   onValue(ref(db,"users"),snap=>{
     loaded=true;
     const data=snap.val()||{};
-    allUsers=Object.values(data).filter(u=>u&&u.uid&&u.name&&u.uid!==myId);
+    allUsers=Object.values(data).filter(u=>u&&u.uid&&u.name&&u.uid!==myId&&u.name.trim()!=="");
     renderUsers("");
   });
 }
@@ -887,7 +887,9 @@ window.adminManageUsers=async()=>{
 window.adminKickUser=async(uid,name)=>{
   if(!confirm("Delete "+name+"?"))return;
   await set(ref(db,"users/"+uid),null);
-  showToast(name+" deleted!");closePanel();adminManageUsers();
+  showToast(name+" deleted!");
+  closePanel();
+  setTimeout(()=>adminManageUsers(),300);
 };
 
 window.adminPromote=async()=>{
