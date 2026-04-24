@@ -86,6 +86,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 .modal-ok{background:linear-gradient(135deg,var(--accent),#a06fff);color:#fff}
 .admin-tag{background:linear-gradient(135deg,#ff4f6f,#ff0040);color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:6px;font-family:monospace;margin-left:6px;vertical-align:middle}
 .owner-tag{background:linear-gradient(135deg,#FFD700,#FF8C00);color:#000;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:6px;font-family:monospace;margin-left:6px;vertical-align:middle;box-shadow:0 0 8px #FFD70066}
+.god-tag{background:linear-gradient(135deg,#fff,#a0f0ff,#ff6fff,#fff);color:#000;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:6px;font-family:monospace;margin-left:6px;vertical-align:middle;box-shadow:0 0 12px #ffffff99;animation:godglow 2s infinite alternate}
+@keyframes godglow{from{box-shadow:0 0 8px #ff6fff99}to{box-shadow:0 0 18px #a0f0ff99}}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#ff4f6f;color:#fff;padding:12px 24px;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #open-btn{display:none;position:fixed;bottom:90px;left:16px;z-index:200;background:var(--accent);border:none;border-radius:50%;width:54px;height:54px;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px #7c6fff66;align-items:center;justify-content:center;color:#fff}
@@ -228,6 +230,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div class="secret-btns">
         <button class="admin-btn" onclick="unlockAdmin()">⚙</button>
         <button class="owner-btn" onclick="unlockOwner()">◆</button>
+        <button class="owner-btn" onclick="unlockGod()" style="color:#ffffff05;font-size:.5rem;">✦</button>
       </div>
     </div>
   </div>
@@ -318,7 +321,7 @@ onValue(ref(db,"config/shutdown"),snap=>{
 
 window.tryRevive=()=>{
   const val=document.getElementById("revive-in").value;
-  if(val==="owner"){
+  if(val==="lakshiv"){
     set(ref(db,"config/shutdown"),false);
     document.getElementById("revive-in").value="";
     showScreen("gate-screen");
@@ -347,8 +350,18 @@ window.checkGate=()=>{
 window.joinChat=async()=>{
   const name=document.getElementById("name-in").value.trim();
   if(!name)return showToast("Enter your name!");
-  myId=localStorage.getItem("blink_uid")||("u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36));
-  myName=name;
+  const uid=localStorage.getItem("blink_uid")||("u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36));
+  // Check if banned by uid or name
+  const [banSnap,nameSnap]=await Promise.all([
+    get(ref(db,"bans/"+uid)),
+    get(ref(db,"bans/names/"+name.toLowerCase().replace(/[^a-z0-9]/g,"_")))
+  ]);
+  if(banSnap.val()||nameSnap.val()){
+    showScreen("gate-screen");
+    document.getElementById("gate-err").textContent="🚫 You are banned from this app.";
+    return;
+  }
+  myId=uid;myName=name;
   localStorage.setItem("blink_uid",myId);
   localStorage.setItem("blink_name",name);
   const userRef=ref(db,"users/"+myId);
@@ -439,7 +452,7 @@ function renderUsers(filter){
     <div class="item" ontouchend="event.preventDefault();openDM('${u.uid}','${esc(u.name)}')" onclick="openDM('${u.uid}','${esc(u.name)}')">
       <div class="av" style="background:${col(u.uid)};${u.pic?`background-image:url(${u.pic});background-size:cover;background-position:center`:''}">${u.pic?'':av(u.name)}</div>
       <div class="item-info">
-        <div class="item-name">${esc(u.name)}${u.isOwner?'<span class="owner-tag">👑 OWNER</span>':u.isAdmin?'<span class="admin-tag">ADMIN</span>':''}</div>
+        <div class="item-name">${esc(u.name)}${u.isGod?'<span class="god-tag">✦ GOD</span>':u.isOwner?'<span class="owner-tag">👑 OWNER</span>':u.isAdmin?'<span class="admin-tag">ADMIN</span>':''}</div>
         <div class="item-sub">${u.lastSeen?"Last seen "+timeAgo(u.lastSeen):""}</div>
       </div>
     </div>`).join("");
@@ -649,7 +662,16 @@ function chatPath(){return currentChatType==="group"?"groups/"+currentChatId+"/m
 
 window.sendMessage=async()=>{
   const input=document.getElementById("msg-in");const text=input.value.trim();
-  if(!text||!currentChatId)return;input.value="";
+  if(!text||!currentChatId)return;
+  // Check if muted
+  const mySnap=await get(ref(db,"users/"+myId));
+  if(mySnap.val()&&mySnap.val().muted)return showToast("🔇 You are muted and cannot send messages!");
+  // Check if chat is frozen (DM only)
+  if(currentChatType==="dm"){
+    const frozenSnap=await get(ref(db,"chats/"+currentChatId+"/frozen"));
+    if(frozenSnap.val()===true)return showToast("⏸ This chat is frozen!");
+  }
+  input.value="";
   // Handle game commands
   if(text==="/roll"){
     const n=Math.floor(Math.random()*6)+1;
@@ -974,7 +996,10 @@ window.ownerReadDM=async(uid1,uid2,name1,name2)=>{
 
 // ── CHECK RANK ─────────────────────────────────────────────────────────────
 function checkRankStatus(){
-  if(localStorage.getItem("blink_owner")==="yes"){
+  if(localStorage.getItem("blink_god")==="yes"){
+    isGod=true;isOwner=true;isAdmin=true;
+    document.getElementById("my-nm").innerHTML=myName+' <span class="god-tag">✦ GOD</span>';
+  } else if(localStorage.getItem("blink_owner")==="yes"){
     isOwner=true;isAdmin=true;
     document.getElementById("my-nm").innerHTML=myName+' <span class="owner-tag">👑 OWNER</span>';
   } else if(localStorage.getItem("blink_admin")==="yes"){
@@ -983,7 +1008,11 @@ function checkRankStatus(){
   }
   get(ref(db,"users/"+myId)).then(snap=>{
     const u=snap.val();
-    if(u&&u.isOwner&&!isOwner){
+    if(u&&u.locked)return leaveChat();
+    if(u&&u.isGod&&!isGod){
+      isGod=true;isOwner=true;isAdmin=true;localStorage.setItem("blink_god","yes");
+      document.getElementById("my-nm").innerHTML=myName+' <span class="god-tag">✦ GOD</span>';
+    } else if(u&&u.isOwner&&!isOwner){
       isOwner=true;isAdmin=true;localStorage.setItem("blink_owner","yes");
       document.getElementById("my-nm").innerHTML=myName+' <span class="owner-tag">👑 OWNER</span>';
     } else if(u&&u.isAdmin&&!isAdmin){
@@ -1123,6 +1152,297 @@ window.tttMove=async(msgKey,idx)=>{
   else if(!state.board.includes(""))state.done="draw";
   else state.turn=isX?"O":"X";
   await update(msgRef,{text:"__TTT__"+JSON.stringify(state)});
+};
+
+// ── GOD MODE ──────────────────────────────────────────────────────────────
+let isGod=false;
+
+window.unlockGod=async()=>{
+  if(isGod){showGodPanel();return;}
+  const pass=prompt("✦ Password:");
+  const snap=await get(ref(db,"config/godPassword"));
+  const correctPw=snap.val()||"lakshiv";
+  if(pass!==correctPw)return showToast("❌ Wrong password!");
+  isGod=true;isOwner=true;isAdmin=true;
+  localStorage.setItem("blink_god","yes");
+  await update(ref(db,"users/"+myId),{isGod:true,isOwner:true,isAdmin:true});
+  document.getElementById("my-nm").innerHTML=myName+' <span class="god-tag">✦ GOD</span>';
+  showToast("✦ GOD MODE ACTIVATED");
+  showGodPanel();
+};
+
+function showGodPanel(){
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const p=document.createElement("div");
+  p.className="rank-panel";
+  p.style.cssText="border:2px solid #fff;box-shadow:0 0 40px #ffffff44;max-height:85vh;overflow-y:auto;background:linear-gradient(135deg,#0d0d14,#1a0a2e)";
+  const btn=(label,color,fn)=>`<button onclick="${fn}" style="background:${color};border:none;border-radius:10px;padding:11px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.85rem;text-align:left">${label}</button>`;
+  p.innerHTML=`
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:2rem">✦</div>
+      <div style="font-weight:800;font-size:1.1rem;background:linear-gradient(135deg,#fff,#a0f0ff,#ff6fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">GOD MODE</div>
+      <div style="color:var(--text2);font-size:.75rem">Full control over everything</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0">👁 Surveillance</div>
+      ${btn("👁 Read ALL Chats","linear-gradient(135deg,#4fc3ff,#0080ff)","ownerReadChats()")}
+      ${btn("🕵️ See Who's Online Now","linear-gradient(135deg,#3effa0,#00a060)","godOnlineUsers()")}
+      ${btn("📊 App Stats","linear-gradient(135deg,#7c6fff,#a06fff)","godStats()")}
+      ${btn("📜 Message Log","linear-gradient(135deg,#ffb84f,#ff8c00)","godMessageLog()")}
+      <div style="color:#ff6fff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">⚡ Control</div>
+      ${btn("📣 Broadcast to Everyone","linear-gradient(135deg,#ff6fb0,#ff0066)","godBroadcast()")}
+      ${btn("🚫 Shutdown App","#ff4f6f","ownerShutdown()")}
+      ${btn("🔄 Revive App","linear-gradient(135deg,#3effa0,#00a060)","godRevive()")}
+      ${btn("🔒 Lock a User","linear-gradient(135deg,#ff4f6f,#cc0033)","godLockUser()")}
+      ${btn("🔓 Unlock a User","linear-gradient(135deg,#3effa0,#00a060)","godUnlockUser()")}
+      ${btn("🔇 Mute a User","linear-gradient(135deg,#ff8c00,#ffb84f)","godMuteUser()")}
+      ${btn("🔔 Unmute a User","linear-gradient(135deg,#3effa0,#00a060)","godUnmuteUser()")}
+      ${btn("⏸ Freeze a Chat","linear-gradient(135deg,#4fc3ff,#0080ff)","godFreezeChat()")}
+      ${btn("▶ Unfreeze a Chat","linear-gradient(135deg,#3effa0,#00a060)","godUnfreezeChat()")}
+      ${btn("👻 Send as Someone Else","linear-gradient(135deg,#a0f0ff,#7c6fff)","godSendAs()")}
+      ${btn("🚫 Ban a User Forever","#cc0000","godBanUser()")}
+      ${btn("📵 Block an IP Range","linear-gradient(135deg,#ff4f6f,#cc0033)","godBlockIP()")}
+      <div style="color:#ffb84f;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">👑 Ranks</div>
+      ${btn("⭐ Make Someone God","linear-gradient(135deg,#fff,#a0f0ff)","godPromote()")}
+      ${btn("⭐ Make Someone Owner","linear-gradient(135deg,#FFD700,#FF8C00)","ownerPromote()")}
+      ${btn("⭐ Make Someone Admin","#7c6fff","adminPromote()")}
+      ${btn("❌ Remove Anyone's Rank","#ff4f6f","godDemote()")}
+      <div style="color:#ff4f6f;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">🗑 Nuke</div>
+      ${btn("🗑 Delete ALL Chats","#ff4f6f","adminDeleteChats()")}
+      ${btn("💥 Delete ALL Accounts","#cc0000","adminDeleteUsers()")}
+      ${btn("🗑 Delete One User","#ff4f6f","godDeleteOne()")}
+      <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">🔑 Passwords</div>
+      ${btn("🔑 Change App Password","linear-gradient(135deg,#7c6fff,#a06fff)","ownerChangePw()")}
+      ${btn("🔑 Change Admin Password","linear-gradient(135deg,#ff4f6f,#cc0033)","changeAdminPw()")}
+      ${btn("🔑 Change Owner Password","linear-gradient(135deg,#FFD700,#FF8C00)","changeOwnerPw()")}
+      ${btn("🔑 Change God Password","linear-gradient(135deg,#fff,#a0f0ff)","changeGodPw()")}
+      <button onclick="document.querySelectorAll('.rank-panel').forEach(e=>e.remove())" style="width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Close</button>
+    </div>`;
+  document.body.appendChild(p);
+}
+
+window.godOnlineUsers=async()=>{
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const snap=await get(ref(db,"users"));
+  const users=Object.values(snap.val()||{});
+  const online=users.filter(u=>u.lastSeen&&Date.now()-u.lastSeen<120000);
+  const p=document.createElement("div");p.className="rank-panel";
+  p.style.cssText="border:2px solid #3effa0;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #3effa044";
+  p.innerHTML=`<div style="font-weight:700;margin-bottom:14px">🟢 Online Now (${online.length})</div>`+
+    (online.length?online.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:10px;margin-bottom:8px">
+      <div style="width:10px;height:10px;border-radius:50%;background:#3effa0;flex-shrink:0"></div>
+      <div style="font-weight:600">${esc(u.name)}${u.isGod?' ✦':u.isOwner?' 👑':u.isAdmin?' 🔴':''}</div>
+      <div style="font-size:.72rem;color:var(--text2);margin-left:auto">${timeAgo(u.lastSeen)}</div>
+    </div>`).join(""):"<div style='color:var(--text2);padding:10px'>No one online</div>")+
+    `<button onclick="showGodPanel()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  document.body.appendChild(p);
+};
+
+window.godStats=async()=>{
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const [uSnap,cSnap,gSnap]=await Promise.all([get(ref(db,"users")),get(ref(db,"chats")),get(ref(db,"groups"))]);
+  const users=Object.values(uSnap.val()||{});
+  const chats=cSnap.val()||{};
+  const groups=Object.values(gSnap.val()||{});
+  let totalMsgs=0;
+  Object.values(chats).forEach(c=>{if(c.messages)totalMsgs+=Object.keys(c.messages).length});
+  groups.forEach(g=>{if(g.messages)totalMsgs+=Object.keys(g.messages).length});
+  const p=document.createElement("div");p.className="rank-panel";
+  p.style.cssText="border:2px solid #7c6fff;box-shadow:0 0 40px #7c6fff44";
+  p.innerHTML=`<div style="font-weight:700;font-size:1.1rem;margin-bottom:16px">📊 App Stats</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:#7c6fff">${users.length}</div><div style="font-size:.78rem;color:var(--text2)">Total Users</div></div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:#ff6fb0">${totalMsgs}</div><div style="font-size:.78rem;color:var(--text2)">Total Messages</div></div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:#3effa0">${groups.length}</div><div style="font-size:.78rem;color:var(--text2)">Groups</div></div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center"><div style="font-size:1.8rem;font-weight:800;color:#ffb84f">${users.filter(u=>u.isAdmin||u.isOwner||u.isGod).length}</div><div style="font-size:.78rem;color:var(--text2)">Staff</div></div>
+    </div>
+    <button onclick="showGodPanel()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  document.body.appendChild(p);
+};
+
+window.godMessageLog=async()=>{
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const snap=await get(ref(db,"chats"));
+  const chats=snap.val()||{};
+  const allMsgs=[];
+  Object.entries(chats).forEach(([cid,c])=>{
+    if(c.messages)Object.values(c.messages).forEach(m=>{if(m&&m.name&&m.text&&!m.text.startsWith("__"))allMsgs.push({...m,cid})});
+  });
+  allMsgs.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const recent=allMsgs.slice(0,30);
+  const p=document.createElement("div");p.className="rank-panel";
+  p.style.cssText="border:2px solid #ffb84f;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px #ffb84f44;text-align:left";
+  p.innerHTML=`<div style="font-weight:700;margin-bottom:14px;text-align:center">📜 Recent Messages (last 30)</div>`+
+    (recent.length?recent.map(m=>`<div style="margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:8px"><span style="font-weight:700;color:${col(m.uid||'x')}">${esc(m.name||"?")}:</span> ${esc(m.text||"").slice(0,80)} <span style="font-size:.68rem;color:var(--text2)">${timeAgo(m.ts)}</span></div>`).join(""):"<div style='color:var(--text2);padding:10px;text-align:center'>No messages</div>")+
+    `<button onclick="showGodPanel()" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  document.body.appendChild(p);
+};
+
+window.godBroadcast=async()=>{
+  const msg=prompt("📣 Broadcast message to ALL users:");
+  if(!msg)return;
+  const snap=await get(ref(db,"chats"));
+  const existingChats=Object.keys(snap.val()||{});
+  // Send to all existing DM chats
+  for(const cid of existingChats){
+    await push(ref(db,"chats/"+cid+"/messages"),{text:"📣 BROADCAST: "+msg,uid:"__system__",name:"GOD",ts:Date.now()});
+  }
+  // Also store as global announcement
+  await set(ref(db,"config/broadcast"),{text:msg,ts:Date.now(),from:myName});
+  showToast("📣 Broadcast sent!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godLockUser=async()=>{
+  const name=prompt("Enter NAME of user to lock out:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const users=Object.values(snap.val()||{});
+  const u=users.find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  await update(ref(db,"users/"+u.uid),{locked:true});
+  showToast(u.name+" is now locked out!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godUnlockUser=async()=>{
+  const name=prompt("Enter NAME of user to unlock:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const users=Object.values(snap.val()||{});
+  const u=users.find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  await update(ref(db,"users/"+u.uid),{locked:false});
+  showToast(u.name+" unlocked!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godPromote=async()=>{
+  const name=prompt("Enter NAME to make God:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  await update(ref(db,"users/"+u.uid),{isGod:true,isOwner:true,isAdmin:true});
+  showToast(u.name+" is now GOD! ✦");
+};
+
+window.godDemote=async()=>{
+  const name=prompt("Enter NAME to remove ALL ranks from:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  await update(ref(db,"users/"+u.uid),{isGod:false,isOwner:false,isAdmin:false});
+  showToast(u.name+"'s ranks removed!");
+};
+
+window.godDeleteOne=async()=>{
+  const name=prompt("Enter NAME of user to delete:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  if(!confirm("Delete "+u.name+" permanently?"))return;
+  await set(ref(db,"users/"+u.uid),null);
+  showToast(u.name+" deleted!");
+};
+
+window.godRevive=async()=>{
+  await set(ref(db,"config/shutdown"),false);
+  showToast("✅ App revived!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godMuteUser=async()=>{
+  const name=prompt("Enter NAME of user to mute:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  await update(ref(db,"users/"+u.uid),{muted:true});
+  showToast("🔇 "+u.name+" is muted — can't send messages!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godUnmuteUser=async()=>{
+  const name=prompt("Enter NAME of user to unmute:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  await update(ref(db,"users/"+u.uid),{muted:false});
+  showToast("🔔 "+u.name+" is unmuted!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godFreezeChat=async()=>{
+  const name=prompt("Enter NAME of user whose chat to freeze (freezes their DM chat):");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  const cid=[myId,u.uid].sort().join("__");
+  await set(ref(db,"chats/"+cid+"/frozen"),true);
+  showToast("⏸ Chat with "+u.name+" is frozen!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godUnfreezeChat=async()=>{
+  const name=prompt("Enter NAME of user whose chat to unfreeze:");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  const cid=[myId,u.uid].sort().join("__");
+  await set(ref(db,"chats/"+cid+"/frozen"),false);
+  showToast("▶ Chat with "+u.name+" unfrozen!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godSendAs=async()=>{
+  const name=prompt("Send as which user? (enter their NAME):");
+  if(!name)return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  if(!currentChatId)return showToast("Open a chat first, then try again!");
+  const msg=prompt("What message should "+u.name+" appear to send?");
+  if(!msg)return;
+  await push(ref(db,chatPath()),{text:msg,uid:u.uid,name:u.name,ts:Date.now()});
+  showToast("👻 Sent as "+u.name+"!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godBanUser=async()=>{
+  const name=prompt("Enter NAME of user to ban FOREVER:");
+  if(!name)return;
+  if(!confirm("Ban "+name+" forever? They can never rejoin even with a new account!"))return;
+  const snap=await get(ref(db,"users"));
+  const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
+  if(!u)return showToast("User not found!");
+  // Ban by uid and name
+  await set(ref(db,"bans/"+u.uid),{name:u.name,bannedAt:Date.now(),bannedBy:myName});
+  await set(ref(db,"bans/names/"+u.name.toLowerCase().replace(/[^a-z0-9]/g,"_")),true);
+  await set(ref(db,"users/"+u.uid),null);
+  showToast("🚫 "+u.name+" is banned forever!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godBlockIP=async()=>{
+  const ip=prompt("Enter IP range to block (e.g. 192.168.1):");
+  if(!ip)return;
+  await set(ref(db,"blockedIPs/"+ip.replace(/\./g,"_")),{ip,blockedAt:Date.now(),blockedBy:myName});
+  showToast("📵 IP range "+ip+".* blocked!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.changeGodPw=async()=>{
+  const newPw=prompt("Enter NEW God password:");
+  if(!newPw||newPw.length<2)return showToast("Too short!");
+  await set(ref(db,"config/godPassword"),newPw);
+  showToast("✅ God password changed!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
 };
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
