@@ -1501,6 +1501,10 @@ const sn=localStorage.getItem("blink_name"),si=localStorage.getItem("blink_uid")
 // Show SOMETHING immediately — never leave a blank screen
 if(sn&&si){
   myId=si;myName=sn;
+  // Write back to Firebase so others can see us
+  const uRef=ref(db,"users/"+myId);
+  set(uRef,{name:myName,uid:myId,online:true,lastSeen:Date.now()});
+  onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
   enterApp();
 } else {
   showScreen("gate-screen");
