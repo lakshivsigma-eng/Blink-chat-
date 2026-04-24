@@ -69,6 +69,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 .typing span:nth-child(2){animation-delay:.2s}
 .typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:0}40%{opacity:1}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
 .input-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
 #msg-in{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:16px;outline:none}
 #msg-in:focus{border-color:var(--accent)}
@@ -812,7 +814,7 @@ window.unlockAdmin=async()=>{
   showAdminPanel();
 };
 
-function showAdminPanel(){
+window.showAdminPanel=function(){
   makePanel("🔴 Admin Panel","#ff4f6f",
     panelBtn("🗑 Delete ALL Chats","#ff4f6f","#fff","adminDeleteChats()")+
     panelBtn("👤 Delete ALL Accounts","#ff4f6f","#fff","adminDeleteUsers()")+
@@ -835,7 +837,7 @@ window.unlockOwner=async()=>{
   showOwnerPanel();
 };
 
-function showOwnerPanel(){
+window.showOwnerPanel=function(){
   makePanel("👑 Owner Panel","#FFD700",
     panelBtn("👁 Read All Chats","linear-gradient(135deg,#FFD700,#FFA500)","#000","ownerReadChats()")+
     panelBtn("🔑 Change App Password","linear-gradient(135deg,#FFD700,#FFA500)","#000","ownerChangePw()")+
@@ -1171,7 +1173,7 @@ window.unlockGod=async()=>{
   showGodPanel();
 };
 
-function showGodPanel(){
+window.showGodPanel=function(){
   document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
   const p=document.createElement("div");
   p.className="rank-panel";
@@ -1279,19 +1281,56 @@ window.godMessageLog=async()=>{
 };
 
 window.godBroadcast=async()=>{
-  const msg=prompt("📣 Broadcast message to ALL users:");
+  const msg=prompt("📣 Announcement message:");
   if(!msg)return;
-  const snap=await get(ref(db,"chats"));
-  const existingChats=Object.keys(snap.val()||{});
-  // Send to all existing DM chats
-  for(const cid of existingChats){
-    await push(ref(db,"chats/"+cid+"/messages"),{text:"📣 BROADCAST: "+msg,uid:"__system__",name:"GOD",ts:Date.now()});
-  }
-  // Also store as global announcement
-  await set(ref(db,"config/broadcast"),{text:msg,ts:Date.now(),from:myName});
-  showToast("📣 Broadcast sent!");
+  const from=prompt("Shown as (leave blank for your name):")||myName;
+  // Save to Firebase — everyone's app will pick it up
+  await set(ref(db,"config/announcement"),{text:msg,from,ts:Date.now(),expires:Date.now()+(3*60*1000)});
+  showToast("📣 Announcement sent to everyone!");
   document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
 };
+
+function showAnnouncement(text,from){
+  // Remove any existing
+  const ex=document.getElementById("announcement-overlay");
+  if(ex)ex.remove();
+  const overlay=document.createElement("div");
+  overlay.id="announcement-overlay";
+  overlay.style.cssText="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#000000cc;backdrop-filter:blur(8px);animation:fadein .4s ease";
+  overlay.innerHTML=`
+    <div style="background:linear-gradient(135deg,#1a0a2e,#0d0d14);border:2px solid #fff;border-radius:24px;padding:40px 32px;width:90%;max-width:480px;text-align:center;box-shadow:0 0 60px #ffffff33;animation:popIn .4s cubic-bezier(.175,.885,.32,1.275)">
+      <div style="font-size:3rem;margin-bottom:12px">📣</div>
+      <div style="font-size:.8rem;font-weight:700;color:#a0f0ff;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">ANNOUNCEMENT</div>
+      <div style="font-size:1.3rem;font-weight:800;color:#fff;line-height:1.5;margin-bottom:20px">${text.replace(/</g,"&lt;")}</div>
+      <div style="font-size:.82rem;color:#7878a0;margin-bottom:24px">— ${from.replace(/</g,"&lt;")}</div>
+      <div id="ann-timer" style="font-size:.75rem;color:#3effa0;font-family:monospace;margin-bottom:16px">Closing in 3:00</div>
+      <button onclick="document.getElementById('announcement-overlay').remove()" style="background:linear-gradient(135deg,#7c6fff,#a06fff);border:none;border-radius:12px;padding:12px 28px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.95rem">Dismiss</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  // Countdown timer — 3 minutes
+  let secs=180;
+  const timerEl=document.getElementById("ann-timer");
+  const interval=setInterval(()=>{
+    secs--;
+    if(secs<=0){
+      clearInterval(interval);
+      overlay.remove();
+      return;
+    }
+    const m=Math.floor(secs/60);
+    const s=secs%60;
+    if(timerEl)timerEl.textContent="Closing in "+m+":"+(s<10?"0":"")+s;
+  },1000);
+}
+
+// Listen for announcements from Firebase
+onValue(ref(db,"config/announcement"),snap=>{
+  const data=snap.val();
+  if(!data||!data.text)return;
+  if(Date.now()>data.expires)return; // already expired
+  if(Date.now()-data.ts>500)return; // only show if just sent (within 0.5s)
+  showAnnouncement(data.text,data.from||"System");
+});
 
 window.godLockUser=async()=>{
   const name=prompt("Enter NAME of user to lock out:");
