@@ -353,19 +353,26 @@ window.joinChat=async()=>{
   const name=document.getElementById("name-in").value.trim();
   if(!name)return showToast("Enter your name!");
   const uid=localStorage.getItem("blink_uid")||("u_"+Math.random().toString(36).substr(2,9)+Date.now().toString(36));
-  // Check if banned by uid or name
-  const [banSnap,nameSnap]=await Promise.all([
-    get(ref(db,"bans/"+uid)),
-    get(ref(db,"bans/names/"+name.toLowerCase().replace(/[^a-z0-9]/g,"_")))
-  ]);
-  if(banSnap.val()||nameSnap.val()){
-    showScreen("gate-screen");
-    document.getElementById("gate-err").textContent="🚫 You are banned from this app.";
-    return;
-  }
+  // Only check ban if uid already exists (returning user)
+  try{
+    const banSnap=await get(ref(db,"bans/"+uid));
+    if(banSnap.exists()&&banSnap.val()===true){
+      showScreen("gate-screen");
+      document.getElementById("gate-err").textContent="🚫 You are banned from this app.";
+      return;
+    }
+  }catch(e){}
   myId=uid;myName=name;
   localStorage.setItem("blink_uid",myId);
   localStorage.setItem("blink_name",name);
+  // Clean up any old duplicate entries with same name but different uid
+  const allSnap=await get(ref(db,"users"));
+  const allU=allSnap.val()||{};
+  for(const [k,v] of Object.entries(allU)){
+    if(v&&v.name===name&&k!==myId){
+      await set(ref(db,"users/"+k),null);
+    }
+  }
   const userRef=ref(db,"users/"+myId);
   await set(userRef,{name,uid:myId,online:true,lastSeen:Date.now()});
   onDisconnect(userRef).update({online:false,lastSeen:Date.now()});
@@ -439,7 +446,15 @@ function loadUsers(){
   onValue(ref(db,"users"),snap=>{
     loaded=true;
     const data=snap.val()||{};
-    allUsers=Object.values(data).filter(u=>u&&u.uid&&u.name&&u.uid!==myId&&u.name.trim()!=="");
+    // Filter out self, nulls, and duplicates
+    const seen=new Set();
+    allUsers=Object.values(data).filter(u=>{
+      if(!u||!u.uid||!u.name||u.name.trim()==="")return false;
+      if(u.uid===myId)return false;
+      if(seen.has(u.uid))return false;
+      seen.add(u.uid);
+      return true;
+    });
     renderUsers("");
   });
 }
@@ -549,7 +564,10 @@ window.openDM=(uid,name)=>{
   cavEl.textContent=av(name);cavEl.style.background=col(uid);cavEl.className="";
   // Show chat area
   document.getElementById("chat-placeholder").style.display="none";
-  document.getElementById("chat-area").style.display="flex";
+  const ca=document.getElementById("chat-area");
+  ca.style.display="flex";
+  ca.style.flexDirection="column";
+  ca.style.height="100%";
   // Start fresh listeners
   startChatListeners();
 };
@@ -573,7 +591,10 @@ window.openGroup=(gid,name,count)=>{
   cavEl.textContent=av(name);cavEl.style.background=col(gid);cavEl.className="grp";
   // Show chat area
   document.getElementById("chat-placeholder").style.display="none";
-  document.getElementById("chat-area").style.display="flex";
+  const ca2=document.getElementById("chat-area");
+  ca2.style.display="flex";
+  ca2.style.flexDirection="column";
+  ca2.style.height="100%";
   // Start fresh listeners
   startChatListeners();
 };
@@ -1463,8 +1484,7 @@ window.godBanUser=async()=>{
   const u=Object.values(snap.val()||{}).find(x=>x.name&&x.name.toLowerCase()===name.toLowerCase());
   if(!u)return showToast("User not found!");
   // Ban by uid and name
-  await set(ref(db,"bans/"+u.uid),{name:u.name,bannedAt:Date.now(),bannedBy:myName});
-  await set(ref(db,"bans/names/"+u.name.toLowerCase().replace(/[^a-z0-9]/g,"_")),true);
+  await set(ref(db,"bans/"+u.uid),true);
   await set(ref(db,"users/"+u.uid),null);
   showToast("🚫 "+u.name+" is banned forever!");
   document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
