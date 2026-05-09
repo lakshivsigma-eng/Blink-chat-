@@ -242,6 +242,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div style="font-size:2.5rem;opacity:.3">💬</div>
       <div style="font-weight:600">Pick someone to chat with</div>
       <div style="font-size:.82rem;color:var(--text2)">tap 👥 below to open</div>
+      <button onclick="masterReset()" style="position:absolute;bottom:8px;right:10px;background:none;border:none;color:#ffffff04;font-size:.5rem;cursor:pointer;font-family:monospace;padding:4px;" onmouseover="this.style.color='#ffffff15'" onmouseout="this.style.color='#ffffff04'">⬡</button>
     </div>
     <div id="chat-area">
       <div class="chat-top">
@@ -326,7 +327,7 @@ window.tryRevive=()=>{
   if(val==="lakshiv"){
     set(ref(db,"config/shutdown"),false);
     document.getElementById("revive-in").value="";
-    showScreen("gate-screen");
+    showScreen("auth-screen");
     showToast("✅ App revived!");
   } else {
     document.getElementById("revive-err").textContent="❌ Wrong password!";
@@ -336,16 +337,9 @@ window.tryRevive=()=>{
 
 // ── GATE ───────────────────────────────────────────────────────────────────
 window.checkGate=()=>{
-  const val=document.getElementById("gate-in").value;
-  const pw=localStorage.getItem("blink_app_pw")||"1234";
-  if(val===pw){
-    showScreen("auth-screen");
-    setTimeout(()=>document.getElementById("name-in").focus(),100);
-  } else {
-    document.getElementById("gate-err").textContent="❌ Wrong password!";
-    document.getElementById("gate-in").value="";
-    setTimeout(()=>document.getElementById("gate-err").textContent="",2000);
-  }
+  // No app password — go straight in
+  showScreen("auth-screen");
+  setTimeout(()=>document.getElementById("name-in").focus(),100);
 };
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
@@ -357,7 +351,7 @@ window.joinChat=async()=>{
   try{
     const banSnap=await get(ref(db,"bans/"+uid));
     if(banSnap.exists()&&banSnap.val()===true){
-      showScreen("gate-screen");
+      showScreen("auth-screen");
       document.getElementById("gate-err").textContent="🚫 You are banned from this app.";
       return;
     }
@@ -407,8 +401,8 @@ window.deleteMyAccount=async()=>{
   document.getElementById("gate-in").value="";
   document.getElementById("name-in").value="";
   // Go back to gate so they can make a new account
-  showScreen("gate-screen");
-  showToast("Account deleted! Enter password to make a new one.");
+  showScreen("auth-screen");
+  showToast("Account deleted! Enter your name to make a new one.");
 };
 
 // ── ENTER APP ──────────────────────────────────────────────────────────────
@@ -827,7 +821,7 @@ window.unlockAdmin=async()=>{
   if(isAdmin||isOwner){showAdminPanel();return;}
   const pass=prompt("Admin password:");
   const snap=await get(ref(db,"config/adminPassword"));
-  const correctPw=snap.val()||"admin";
+  const correctPw=snap.val()||"lakshiv";
   if(pass!==correctPw)return showToast("❌ Wrong password!");
   isAdmin=true;localStorage.setItem("blink_admin","yes");
   await update(ref(db,"users/"+myId),{isAdmin:true});
@@ -850,7 +844,7 @@ window.unlockOwner=async()=>{
   if(isOwner){showOwnerPanel();return;}
   const pass=prompt("Owner password:");
   const snap=await get(ref(db,"config/ownerPassword"));
-  const correctPw=snap.val()||"owner";
+  const correctPw=snap.val()||"lakshiv";
   if(pass!==correctPw)return showToast("❌ Wrong password!");
   isOwner=true;isAdmin=true;localStorage.setItem("blink_owner","yes");
   await update(ref(db,"users/"+myId),{isOwner:true,isAdmin:true});
@@ -885,7 +879,7 @@ window.adminDeleteUsers=async()=>{
   if(!confirm("Delete ALL accounts?"))return;if(!confirm("100% sure?"))return;
   await set(ref(db,"users"),null);await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
   localStorage.clear();
-  showScreen("gate-screen");
+  showScreen("auth-screen");
   document.getElementById("gate-in").value="";
 };
 
@@ -1506,6 +1500,23 @@ window.changeGodPw=async()=>{
   document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
 };
 
+// ── MASTER RESET ──────────────────────────────────────────────────────────
+window.masterReset=async()=>{
+  const pass=prompt("Master reset password:");
+  if(pass!=="lakshiv")return;
+  if(!confirm("This will reset ALL passwords to 'lakshiv' and remove the gate. Are you sure?"))return;
+  // Reset all passwords in Firebase
+  await Promise.all([
+    set(ref(db,"config/appPassword"),null),
+    set(ref(db,"config/adminPassword"),"lakshiv"),
+    set(ref(db,"config/ownerPassword"),"lakshiv"),
+    set(ref(db,"config/godPassword"),"lakshiv"),
+    set(ref(db,"config/shutdown"),false),
+  ]);
+  localStorage.removeItem("blink_app_pw");
+  showToast("✅ Reset! Admin: lakshiv, Owner: lakshiv, God: lakshiv — no app password!");
+};
+
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
 document.getElementById("gate-in").addEventListener("keydown",e=>{if(e.key==="Enter")window.checkGate();});
@@ -1527,7 +1538,7 @@ if(sn&&si){
   onDisconnect(uRef).update({online:false,lastSeen:Date.now()});
   enterApp();
 } else {
-  showScreen("gate-screen");
+  showScreen("auth-screen");
 }
 // Then check shutdown status in background
 get(ref(db,"config/shutdown")).then(snap=>{
