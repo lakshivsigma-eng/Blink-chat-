@@ -1534,10 +1534,33 @@ window.masterReset=async()=>{
 window.godNuke=async()=>{
   const pass=prompt("💣 Enter nuke password:");
   if(pass!=="nuke")return showToast("❌ Wrong password!");
-  if(!confirm("💣 NUKE the app for 30 minutes? NO ONE can get in!"))return;
-  const nukeUntil=Date.now()+(30*60*1000);
+  // Show time picker panel
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const p=document.createElement("div");p.className="rank-panel";
+  p.style.cssText="border:2px solid #ff0000;box-shadow:0 0 40px #ff000066;text-align:center;background:linear-gradient(135deg,#0a0000,#1a0000)";
+  const times=[
+    {label:"30 Minutes",ms:30*60*1000},
+    {label:"1 Hour",ms:60*60*1000},
+    {label:"2 Hours",ms:2*60*60*1000},
+    {label:"3 Hours",ms:3*60*60*1000},
+    {label:"5 Hours",ms:5*60*60*1000},
+    {label:"1 Day",ms:24*60*60*1000},
+  ];
+  p.innerHTML=`<div style="font-size:2rem;margin-bottom:6px">💣</div>
+    <div style="font-weight:800;color:#ff0000;font-size:1rem;margin-bottom:4px">SELECT NUKE DURATION</div>
+    <div style="color:#ff6666;font-size:.78rem;margin-bottom:16px">How long should the app be down?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${times.map(t=>`<button onclick="confirmNuke(${t.ms},'${t.label}')" style="background:linear-gradient(135deg,#ff0000,#660000);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem">${t.label}</button>`).join("")}
+      <button onclick="document.querySelectorAll('.rank-panel').forEach(e=>e.remove())" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">Cancel</button>
+    </div>`;
+  document.body.appendChild(p);
+};
+
+window.confirmNuke=async(ms,label)=>{
+  if(!confirm("💣 NUKE app for "+label+"? NO ONE can get in!"))return;
+  const nukeUntil=Date.now()+ms;
   await set(ref(db,"config/nuke"),{active:true,until:nukeUntil,by:myName,at:Date.now()});
-  showToast("💣 APP NUKED for 30 minutes!");
+  showToast("💣 APP NUKED for "+label+"!");
   document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
 };
 
