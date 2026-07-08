@@ -1620,6 +1620,8 @@ const MUSIC_TRACKS=[
 
 
 
+let bgAudio=null;
+
 function playBgMusic(url,name){
   if(bgAudio){bgAudio.pause();bgAudio=null;}
   if(!url)return;
