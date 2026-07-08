@@ -186,7 +186,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div class="tabs">
         <button class="tab active" onclick="switchTab('people')">👤 People</button>
         <button class="tab" onclick="switchTab('groups')">👥 Groups</button>
-        <button class="tab" onclick="switchTab('music')">🎵 Music</button>
         <button class="tab" onclick="switchTab('games')">🎮 Games</button>
       </div>
     </div>
@@ -202,16 +201,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
         <button onclick="openModal('create-grp-modal')" style="background:var(--accent);border:none;border-radius:10px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;flex-shrink:0;">+</button>
       </div>
       <div class="list" id="groups-list"><div class="empty">No groups yet</div></div>
-    </div>
-    <div class="tab-panel" id="tab-music">
-      <div class="list" style="padding:12px">
-        <div style="font-size:.75rem;color:var(--text2);margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px">🎵 Pick Your Music</div>
-        <div style="font-size:.72rem;color:var(--text2);margin-bottom:12px">Only you can hear it!</div>
-        <div id="music-track-list" style="display:flex;flex-direction:column;gap:8px"></div>
-        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-          <button onclick="stopMyMusic()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#ff4f6f;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.85rem">⏹ Stop Music</button>
-        </div>
-      </div>
     </div>
     <div class="tab-panel" id="tab-games">
       <div class="list" style="padding:12px">
@@ -249,6 +238,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div style="display:flex;gap:6px;margin-bottom:2px">
         <button onclick="toggleTheme()" id="theme-btn" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🌙 Dark</button>
         <button onclick="changeProfilePic()" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🖼 Pic</button>
+        <button onclick="toggleMusic()" id="music-btn" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🎵</button>
       </div>
       <button class="del-btn" onclick="deleteMyAccount()">🗑 Delete My Account</button>
       <div class="secret-btns">
@@ -444,7 +434,6 @@ function enterApp(){
   }
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
-  renderMusicTracks();
   checkRankStatus();
   loadUsers();
   loadGroups();
@@ -453,8 +442,8 @@ function enterApp(){
 }
 
 window.switchTab=tab=>{
-  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups","music","games"][i]===tab)});
-  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups","tab-music","tab-games"][i]==="tab-"+tab)});
+  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups","games"][i]===tab)});
+  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups","tab-games"][i]==="tab-"+tab)});
 };
 
 // ── USERS ──────────────────────────────────────────────────────────────────
@@ -1604,102 +1593,26 @@ onValue(ref(db,"config/nuke"),snap=>{
   }
 });
 
-// ── BACKGROUND MUSIC ──────────────────────────────────────────────────────
-const MUSIC_TRACKS=[
-  {name:"🌟 Life Goes On",         url:"https://www.bensound.com/bensound-music/bensound-life.mp3"},
-  {name:"🌈 Happy Kids",           url:"https://www.bensound.com/bensound-music/bensound-happyrock.mp3"},
-  {name:"✨ Sunny Days",           url:"https://www.bensound.com/bensound-music/bensound-sunny.mp3"},
-  {name:"🎪 Fun Time",             url:"https://www.bensound.com/bensound-music/bensound-funday.mp3"},
-  {name:"🎠 Playful",              url:"https://www.bensound.com/bensound-music/bensound-clearday.mp3"},
-  {name:"🌊 Chill Vibes",         url:"https://www.bensound.com/bensound-music/bensound-littleidea.mp3"},
-  {name:"🚀 Adventure Time",      url:"https://www.bensound.com/bensound-music/bensound-ukulele.mp3"},
-  {name:"🌙 Dreamy",              url:"https://www.bensound.com/bensound-music/bensound-dreams.mp3"},
-  {name:"🎵 Acoustic Breeze",     url:"https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3"},
-  {name:"🎶 Sweet",               url:"https://www.bensound.com/bensound-music/bensound-sweet.mp3"},
-];
+// ── MUSIC ─────────────────────────────────────────────────────────────────
+const _audio = new Audio("https://www.bensound.com/bensound-music/bensound-life.mp3");
+_audio.loop = true;
+_audio.volume = 0.3;
+let _musicOn = false;
 
-
-
-let bgAudio=null;
-
-function playBgMusic(url,name){
-  if(bgAudio){bgAudio.pause();bgAudio=null;}
-  if(!url)return;
-  bgAudio=new Audio(url);
-  bgAudio.loop=true;
-  bgAudio.volume=0.3;
-  bgAudio.play().catch(()=>{});
-  // Show mini player
-  showMusicPlayer(name);
-}
-
-function showMusicPlayer(name){
-  const ex=document.getElementById("music-player");
-  if(ex)ex.remove();
-  if(!name)return;
-  const p=document.createElement("div");
-  p.id="music-player";
-  p.style.cssText="position:fixed;bottom:80px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;z-index:300;box-shadow:0 4px 20px #0008;max-width:240px";
-  p.innerHTML=`<span style="font-size:1.2rem;animation:spin 3s linear infinite">🎵</span>
-    <div style="flex:1;overflow:hidden"><div style="font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:.68rem;color:var(--text2)">Now Playing</div></div>
-    <button onclick="stopMyMusic()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;padding:2px">⏹</button>`;
-  document.body.appendChild(p);
-}
-
-window.stopMyMusic=()=>{
-  if(bgAudio){bgAudio.pause();bgAudio=null;}
-  const p=document.getElementById("music-player");
-  if(p)p.remove();
-};
-
-function renderMusicTracks(){
-  const list=document.getElementById("music-track-list");
-  if(!list)return;
-  list.innerHTML=MUSIC_TRACKS.map((t,i)=>`
-    <button onclick="playBgMusic('${t.url}','${t.name}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;font-size:.88rem;text-align:left;width:100%;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">${t.name}</button>
-  `).join("");
-}
-
-// Listen for music commands from god
-onValue(ref(db,"config/music"),snap=>{
-  const data=snap.val();
-  if(!data)return;
-  if(data.url){
-    playBgMusic(data.url,data.name);
+window.toggleMusic = () => {
+  const btn = document.getElementById("music-btn");
+  if(_musicOn){
+    _audio.pause();
+    _musicOn = false;
+    if(btn) btn.textContent = "🎵";
+    if(btn) btn.style.color = "var(--text2)";
   } else {
-    stopMyMusic();
+    _audio.play().catch(()=>showToast("Tap again to play music!"));
+    _musicOn = true;
+    if(btn) btn.textContent = "🔊";
+    if(btn) btn.style.color = "var(--accent)";
   }
-});
-
-window.godPickMusic=()=>{
-  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
-  const p=document.createElement("div");p.className="rank-panel";
-  p.style.cssText="border:2px solid #ff6fb0;box-shadow:0 0 40px #ff6fb044;max-height:80vh;overflow-y:auto";
-  p.innerHTML=`<div style="font-size:1.1rem;font-weight:700;margin-bottom:6px;text-align:center">🎵 Pick Background Music</div>
-    <div style="color:var(--text2);font-size:.75rem;text-align:center;margin-bottom:14px">Plays for EVERYONE in the app</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${MUSIC_TRACKS.map(t=>`<button onclick="godSetMusic('${t.url}','${t.name}')" style="background:linear-gradient(135deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;font-size:.88rem;text-align:left">${t.name}</button>`).join("")}
-      <button onclick="showGodPanel()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;margin-top:4px">← Back</button>
-    </div>`;
-  document.body.appendChild(p);
 };
-
-window.godSetMusic=async(url,name)=>{
-  await set(ref(db,"config/music"),{url,name,ts:Date.now()});
-  showToast("🎵 Now playing: "+name+" for everyone!");
-  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
-};
-
-window.godStopMusic=async()=>{
-  await set(ref(db,"config/music"),{url:null,name:null,ts:Date.now()});
-  showToast("⏹ Music stopped for everyone!");
-  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
-};
-
-// Add spin animation for music note
-const styleEl=document.createElement("style");
-styleEl.textContent="@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}";
-document.head.appendChild(styleEl);
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
