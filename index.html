@@ -238,7 +238,13 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div style="display:flex;gap:6px;margin-bottom:2px">
         <button onclick="toggleTheme()" id="theme-btn" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🌙 Dark</button>
         <button onclick="changeProfilePic()" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🖼 Pic</button>
-        <button onclick="toggleMusic()" id="music-btn" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:9px;cursor:pointer">🎵</button>
+
+      </div>
+      <div style="padding:4px 0 8px">
+        <div style="font-size:.7rem;color:var(--text2);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:1px">🎵 Music</div>
+        <audio controls loop style="width:100%;border-radius:10px;height:36px">
+          <source src="https://www.bensound.com/bensound-music/bensound-life.mp3" type="audio/mpeg">
+        </audio>
       </div>
       <button class="del-btn" onclick="deleteMyAccount()">🗑 Delete My Account</button>
       <div class="secret-btns">
@@ -1592,27 +1598,6 @@ onValue(ref(db,"config/nuke"),snap=>{
     startNukeTimer(data.until);
   }
 });
-
-// ── MUSIC ─────────────────────────────────────────────────────────────────
-const _audio = new Audio("https://www.bensound.com/bensound-music/bensound-life.mp3");
-_audio.loop = true;
-_audio.volume = 0.3;
-let _musicOn = false;
-
-window.toggleMusic = () => {
-  const btn = document.getElementById("music-btn");
-  if(_musicOn){
-    _audio.pause();
-    _musicOn = false;
-    if(btn) btn.textContent = "🎵";
-    if(btn) btn.style.color = "var(--text2)";
-  } else {
-    _audio.play().catch(()=>showToast("Tap again to play music!"));
-    _musicOn = true;
-    if(btn) btn.textContent = "🔊";
-    if(btn) btn.style.color = "var(--accent)";
-  }
-};
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
