@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Chat for US</title>
+<title>Blink Chat by Lakshiv</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -138,7 +138,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <!-- GATE -->
 <div id="gate-screen" class="screen">
   <div class="card">
-    <div class="logo">Chat for US</div>
+    <div class="logo">Blink by lakshiv⚡</div>
     <div class="sub">// enter password</div>
     <input id="gate-in" class="big-input" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')checkGate()">
     <div id="gate-err" class="err"></div>
@@ -149,7 +149,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <!-- AUTH -->
 <div id="auth-screen" class="screen">
   <div class="card">
-    <div class="logo">American Chat </div>
+    <div class="logo">Blink by lakshiv ⚡</div>
     <div class="sub">// what's your name?</div>
     <input id="name-in" class="big-input" type="text" placeholder="Your name" maxlength="20" style="letter-spacing:0" onkeydown="if(event.key==='Enter')joinChat()">
     <div style="height:10px"></div>
@@ -174,7 +174,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
 <div id="app-screen" class="screen">
   <div id="sidebar">
     <div class="sid-top">
-      <div class="brand">American Chat </div>
+      <div class="brand">Blink by lakshiv ⚡</div>
       <div class="profile">
         <div class="av" id="my-av">?</div>
         <div class="av-name">
@@ -1221,6 +1221,7 @@ window.showGodPanel=function(){
       ${btn("📊 App Stats","linear-gradient(135deg,#7c6fff,#a06fff)","godStats()")}
       ${btn("📜 Message Log","linear-gradient(135deg,#ffb84f,#ff8c00)","godMessageLog()")}
       <div style="color:#ff6fff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">⚡ Control</div>
+      ${btn("🎵 Background Music","linear-gradient(135deg,#1DB954,#1aa34a)","godMusicPanel()")}
       ${btn("📣 Broadcast to Everyone","linear-gradient(135deg,#ff6fb0,#ff0066)","godBroadcast()")}
       ${btn("🚫 Shutdown App","#ff4f6f","ownerShutdown()")}
       ${btn("🔄 Revive App","linear-gradient(135deg,#3effa0,#00a060)","godRevive()")}
@@ -1243,6 +1244,9 @@ window.showGodPanel=function(){
       ${btn("🗑 Delete ALL Chats","#ff4f6f","adminDeleteChats()")}
       ${btn("💥 Delete ALL Accounts","#cc0000","adminDeleteUsers()")}
       ${btn("🗑 Delete One User","#ff4f6f","godDeleteOne()")}
+      <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">🎵 Background Music</div>
+      ${btn("🎵 Pick Music for Everyone","linear-gradient(135deg,#ff6fb0,#7c6fff)","godPickMusic()")}
+      ${btn("⏹ Stop Music for Everyone","linear-gradient(135deg,#444,#222)","godStopMusic()")}
       <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">🔑 Passwords</div>
       ${btn("🔑 Change App Password","linear-gradient(135deg,#7c6fff,#a06fff)","ownerChangePw()")}
       ${btn("🔑 Change Admin Password","linear-gradient(135deg,#ff4f6f,#cc0033)","changeAdminPw()")}
@@ -1590,6 +1594,208 @@ onValue(ref(db,"config/nuke"),snap=>{
     startNukeTimer(data.until);
   }
 });
+
+// ── BACKGROUND MUSIC ──────────────────────────────────────────────────────
+const MUSIC_LIST=[
+  {title:"Life Goes On",artist:"BTS",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"},
+  {title:"Happy",artist:"Pharrell Williams",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"},
+  {title:"Sunflower",artist:"Post Malone",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"},
+  {title:"Can't Stop the Feeling",artist:"Justin Timberlake",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"},
+  {title:"Shake It Off",artist:"Taylor Swift",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"},
+  {title:"Uptown Funk",artist:"Bruno Mars",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"},
+  {title:"Believer",artist:"Imagine Dragons",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"},
+  {title:"Roar",artist:"Katy Perry",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"},
+  {title:"Dynamite",artist:"BTS",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"},
+  {title:"Blinding Lights",artist:"The Weeknd",url:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"},
+];
+
+let bgAudio=null;
+
+window.godMusicPanel=()=>{
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const p=document.createElement("div");p.className="rank-panel";
+  p.style.cssText="border:2px solid #1DB954;box-shadow:0 0 40px #1DB95444;max-height:85vh;overflow-y:auto;text-align:center";
+  p.innerHTML=`
+    <div style="font-size:2rem;margin-bottom:6px">🎵</div>
+    <div style="font-weight:800;font-size:1.1rem;color:#1DB954;margin-bottom:4px">Background Music</div>
+    <div style="color:var(--text2);font-size:.75rem;margin-bottom:16px">Pick a song — plays for everyone!</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      ${MUSIC_LIST.map((s,i)=>`
+        <button onclick="godPlayMusic(${i})" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.88rem;text-align:left;display:flex;align-items:center;gap:10px">
+          <span style="font-size:1.2rem">🎵</span>
+          <div><div style="font-weight:700">${s.title}</div><div style="font-size:.72rem;color:var(--text2);font-weight:400">${s.artist}</div></div>
+        </button>`).join("")}
+    </div>
+    <button onclick="godStopMusic()" style="width:100%;background:linear-gradient(135deg,#ff4f6f,#cc0033);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.9rem;margin-bottom:8px">⏹ Stop Music</button>
+    <button onclick="showGodPanel()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">← Back</button>`;
+  document.body.appendChild(p);
+};
+
+window.godPlayMusic=async(idx)=>{
+  const song=MUSIC_LIST[idx];
+  // Save to Firebase so everyone gets it
+  await set(ref(db,"config/music"),{idx,title:song.title,artist:song.artist,url:song.url,playing:true,ts:Date.now()});
+  showToast("🎵 Playing: "+song.title);
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godStopMusic=async()=>{
+  await set(ref(db,"config/music"),{playing:false});
+  showToast("⏹ Music stopped!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+function playBgMusic(url){
+  if(bgAudio){bgAudio.pause();bgAudio=null;}
+  bgAudio=new Audio(url);
+  bgAudio.loop=true;
+  bgAudio.volume=0.3;
+  bgAudio.play().catch(()=>{
+    // Autoplay blocked — show a play button
+    showMusicPlayBtn(url);
+  });
+}
+
+function stopBgMusic(){
+  if(bgAudio){bgAudio.pause();bgAudio=null;}
+  const btn=document.getElementById("music-play-btn");
+  if(btn)btn.remove();
+}
+
+function showMusicPlayBtn(url){
+  const ex=document.getElementById("music-play-btn");
+  if(ex)ex.remove();
+  const btn=document.createElement("button");
+  btn.id="music-play-btn";
+  btn.innerHTML="🎵 Tap to play music";
+  btn.style.cssText="position:fixed;bottom:80px;right:16px;z-index:500;background:linear-gradient(135deg,#1DB954,#1aa34a);border:none;border-radius:20px;padding:10px 16px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.82rem;box-shadow:0 4px 20px #1DB95466";
+  btn.onclick=()=>{
+    if(bgAudio){bgAudio.play();}
+    else{bgAudio=new Audio(url);bgAudio.loop=true;bgAudio.volume=0.3;bgAudio.play();}
+    btn.remove();
+  };
+  document.body.appendChild(btn);
+}
+
+// Show mini now-playing bar at top when music is on
+function showNowPlaying(title,artist){
+  const ex=document.getElementById("now-playing");
+  if(ex)ex.remove();
+  const bar=document.createElement("div");
+  bar.id="now-playing";
+  bar.style.cssText="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(135deg,#1DB954,#1aa34a);padding:6px 16px;display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;color:#fff;font-family:'Syne',sans-serif";
+  bar.innerHTML=`<span style="animation:spin 2s linear infinite;display:inline-block">🎵</span> <span>Now Playing: ${esc(title)} — ${esc(artist)}</span>`;
+  document.body.appendChild(bar);
+}
+
+function hideNowPlaying(){
+  const bar=document.getElementById("now-playing");
+  if(bar)bar.remove();
+}
+
+// Add spin animation
+const styleEl=document.createElement("style");
+styleEl.textContent="@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}";
+document.head.appendChild(styleEl);
+
+// Listen for music changes from Firebase
+onValue(ref(db,"config/music"),snap=>{
+  const data=snap.val();
+  if(data&&data.playing&&data.url){
+    playBgMusic(data.url);
+    showNowPlaying(data.title,data.artist);
+  } else {
+    stopBgMusic();
+    hideNowPlaying();
+  }
+});
+
+// ── BACKGROUND MUSIC ──────────────────────────────────────────────────────
+const MUSIC_TRACKS=[
+  {name:"🌟 Life Goes On",         url:"https://www.bensound.com/bensound-music/bensound-life.mp3"},
+  {name:"🌈 Happy Kids",           url:"https://www.bensound.com/bensound-music/bensound-happyrock.mp3"},
+  {name:"✨ Sunny Days",           url:"https://www.bensound.com/bensound-music/bensound-sunny.mp3"},
+  {name:"🎪 Fun Time",             url:"https://www.bensound.com/bensound-music/bensound-funday.mp3"},
+  {name:"🎠 Playful",              url:"https://www.bensound.com/bensound-music/bensound-clearday.mp3"},
+  {name:"🌊 Chill Vibes",         url:"https://www.bensound.com/bensound-music/bensound-littleidea.mp3"},
+  {name:"🚀 Adventure Time",      url:"https://www.bensound.com/bensound-music/bensound-ukulele.mp3"},
+  {name:"🌙 Dreamy",              url:"https://www.bensound.com/bensound-music/bensound-dreams.mp3"},
+  {name:"🎵 Acoustic Breeze",     url:"https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3"},
+  {name:"🎶 Sweet",               url:"https://www.bensound.com/bensound-music/bensound-sweet.mp3"},
+];
+
+let bgAudio=null;
+
+function playBgMusic(url,name){
+  if(bgAudio){bgAudio.pause();bgAudio=null;}
+  if(!url)return;
+  bgAudio=new Audio(url);
+  bgAudio.loop=true;
+  bgAudio.volume=0.3;
+  bgAudio.play().catch(()=>{});
+  // Show mini player
+  showMusicPlayer(name);
+}
+
+function showMusicPlayer(name){
+  const ex=document.getElementById("music-player");
+  if(ex)ex.remove();
+  if(!name)return;
+  const p=document.createElement("div");
+  p.id="music-player";
+  p.style.cssText="position:fixed;bottom:80px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;z-index:300;box-shadow:0 4px 20px #0008;max-width:240px";
+  p.innerHTML=`<span style="font-size:1.2rem;animation:spin 3s linear infinite">🎵</span>
+    <div style="flex:1;overflow:hidden"><div style="font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div><div style="font-size:.68rem;color:var(--text2)">Now Playing</div></div>
+    <button onclick="stopMyMusic()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;padding:2px">⏹</button>`;
+  document.body.appendChild(p);
+}
+
+window.stopMyMusic=()=>{
+  if(bgAudio){bgAudio.pause();bgAudio=null;}
+  const p=document.getElementById("music-player");
+  if(p)p.remove();
+};
+
+// Listen for music commands from god
+onValue(ref(db,"config/music"),snap=>{
+  const data=snap.val();
+  if(!data)return;
+  if(data.url){
+    playBgMusic(data.url,data.name);
+  } else {
+    stopMyMusic();
+  }
+});
+
+window.godPickMusic=()=>{
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+  const p=document.createElement("div");p.className="rank-panel";
+  p.style.cssText="border:2px solid #ff6fb0;box-shadow:0 0 40px #ff6fb044;max-height:80vh;overflow-y:auto";
+  p.innerHTML=`<div style="font-size:1.1rem;font-weight:700;margin-bottom:6px;text-align:center">🎵 Pick Background Music</div>
+    <div style="color:var(--text2);font-size:.75rem;text-align:center;margin-bottom:14px">Plays for EVERYONE in the app</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${MUSIC_TRACKS.map(t=>`<button onclick="godSetMusic('${t.url}','${t.name}')" style="background:linear-gradient(135deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;font-size:.88rem;text-align:left">${t.name}</button>`).join("")}
+      <button onclick="showGodPanel()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;margin-top:4px">← Back</button>
+    </div>`;
+  document.body.appendChild(p);
+};
+
+window.godSetMusic=async(url,name)=>{
+  await set(ref(db,"config/music"),{url,name,ts:Date.now()});
+  showToast("🎵 Now playing: "+name+" for everyone!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+window.godStopMusic=async()=>{
+  await set(ref(db,"config/music"),{url:null,name:null,ts:Date.now()});
+  showToast("⏹ Music stopped for everyone!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+// Add spin animation for music note
+const styleEl=document.createElement("style");
+styleEl.textContent="@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}";
+document.head.appendChild(styleEl);
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
