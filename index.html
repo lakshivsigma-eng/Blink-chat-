@@ -186,6 +186,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div class="tabs">
         <button class="tab active" onclick="switchTab('people')">👤 People</button>
         <button class="tab" onclick="switchTab('groups')">👥 Groups</button>
+        <button class="tab" onclick="switchTab('music')">🎵 Music</button>
         <button class="tab" onclick="switchTab('games')">🎮 Games</button>
       </div>
     </div>
@@ -201,6 +202,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
         <button onclick="openModal('create-grp-modal')" style="background:var(--accent);border:none;border-radius:10px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;flex-shrink:0;">+</button>
       </div>
       <div class="list" id="groups-list"><div class="empty">No groups yet</div></div>
+    </div>
+    <div class="tab-panel" id="tab-music">
+      <div class="list" style="padding:12px">
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px">🎵 Pick Your Music</div>
+        <div style="font-size:.72rem;color:var(--text2);margin-bottom:12px">Only you can hear it!</div>
+        <div id="music-track-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+          <button onclick="stopMyMusic()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#ff4f6f;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;font-size:.85rem">⏹ Stop Music</button>
+        </div>
+      </div>
     </div>
     <div class="tab-panel" id="tab-games">
       <div class="list" style="padding:12px">
@@ -433,6 +444,7 @@ function enterApp(){
   }
   showScreen("app-screen");
   if(Notification&&Notification.permission==="default")Notification.requestPermission();
+  renderMusicTracks();
   checkRankStatus();
   loadUsers();
   loadGroups();
@@ -441,8 +453,8 @@ function enterApp(){
 }
 
 window.switchTab=tab=>{
-  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups","games"][i]===tab)});
-  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups","tab-games"][i]==="tab-"+tab)});
+  document.querySelectorAll(".tab").forEach((b,i)=>{b.classList.toggle("active",["people","groups","music","games"][i]===tab)});
+  document.querySelectorAll(".tab-panel").forEach((p,i)=>{p.classList.toggle("active",["tab-people","tab-groups","tab-music","tab-games"][i]==="tab-"+tab)});
 };
 
 // ── USERS ──────────────────────────────────────────────────────────────────
@@ -1244,9 +1256,6 @@ window.showGodPanel=function(){
       ${btn("🗑 Delete ALL Chats","#ff4f6f","adminDeleteChats()")}
       ${btn("💥 Delete ALL Accounts","#cc0000","adminDeleteUsers()")}
       ${btn("🗑 Delete One User","#ff4f6f","godDeleteOne()")}
-      <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">🎵 Background Music</div>
-      ${btn("🎵 Pick Music for Everyone","linear-gradient(135deg,#ff6fb0,#7c6fff)","godPickMusic()")}
-      ${btn("⏹ Stop Music for Everyone","linear-gradient(135deg,#444,#222)","godStopMusic()")}
       <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0 0">🔑 Passwords</div>
       ${btn("🔑 Change App Password","linear-gradient(135deg,#7c6fff,#a06fff)","ownerChangePw()")}
       ${btn("🔑 Change Admin Password","linear-gradient(135deg,#ff4f6f,#cc0033)","changeAdminPw()")}
@@ -1640,6 +1649,14 @@ window.stopMyMusic=()=>{
   const p=document.getElementById("music-player");
   if(p)p.remove();
 };
+
+function renderMusicTracks(){
+  const list=document.getElementById("music-track-list");
+  if(!list)return;
+  list.innerHTML=MUSIC_TRACKS.map((t,i)=>`
+    <button onclick="playBgMusic('${t.url}','${t.name}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;font-size:.88rem;text-align:left;width:100%;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">${t.name}</button>
+  `).join("");
+}
 
 // Listen for music commands from god
 onValue(ref(db,"config/music"),snap=>{
