@@ -443,6 +443,7 @@ function enterApp(){
   checkRankStatus();
   loadUsers();
   loadGroups();
+  setupUpdatesGroup();
   // Load app password from Firebase
   get(ref(db,"config/appPassword")).then(snap=>{if(snap.val())localStorage.setItem("blink_app_pw",snap.val())});
 }
@@ -509,15 +510,16 @@ function renderGroups(filter){
     const isGrpOwner=g.owner===myId;
     const pending=g.requests&&g.requests[myId];
     const count=g.members?Object.keys(g.members).length:0;
-    return`<div class="item" onclick="${isMember?`openGroup('${g.gid}','${esc(g.name)}',${count})`:`requestJoin('${g.gid}','${esc(g.name)}')`}">
-      <div class="grp-av" style="background:${col(g.gid)}">${av(g.name)}</div>
+    const isUpdatesGrp=g.gid===UPDATES_GID;
+    return`<div class="item" onclick="openGroup('${g.gid}','${esc(g.name)}',${count})">
+      <div class="grp-av" style="background:${isUpdatesGrp?"linear-gradient(135deg,#7c6fff,#ff6fb0)":col(g.gid)}">${isUpdatesGrp?"📢":av(g.name)}</div>
       <div class="item-info">
-        <div class="item-name">${esc(g.name)}</div>
+        <div class="item-name">${esc(g.name)}${isUpdatesGrp?'<span style="background:#7c6fff;color:#fff;font-size:.6rem;padding:2px 6px;border-radius:6px;margin-left:6px;font-family:monospace">OFFICIAL</span>':''}</div>
         <div class="item-sub">${g.desc||""} · ${count} members</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-        <span style="font-size:.75rem;color:${isMember?"#3effa0":pending?"#ffb84f":"var(--text2)"}">${isGrpOwner?"👑":isMember?"✓":pending?"Pending":"Join"}</span>
-        ${isMember?`<button onclick="event.stopPropagation();copyInvite('${g.gid}')" style="background:var(--surface2);border:none;border-radius:6px;padding:3px 7px;color:var(--text2);font-size:.7rem;cursor:pointer;">🔗</button>`:""}
+        ${!isUpdatesGrp?`<span style="font-size:.75rem;color:${isMember?"#3effa0":pending?"#ffb84f":"var(--text2)"}">${isGrpOwner?"👑":isMember?"✓":pending?"Pending":"Join"}</span>`:""}
+        ${isMember&&!isUpdatesGrp?`<button onclick="event.stopPropagation();copyInvite('${g.gid}')" style="background:var(--surface2);border:none;border-radius:6px;padding:3px 7px;color:var(--text2);font-size:.7rem;cursor:pointer;">🔗</button>`:""}
       </div>
     </div>`;
   }).join("");
@@ -535,6 +537,7 @@ window.createGroup=async()=>{
 };
 
 window.requestJoin=async(gid,gname)=>{
+  if(gid===UPDATES_GID)return showToast("You are already in this group!");
   const g=allGroups.find(x=>x.gid===gid);
   if(!g)return;
   if(g.requests&&g.requests[myId])return showToast("Already requested!");
@@ -890,7 +893,8 @@ window.showOwnerPanel=function(){
 // ── ADMIN ACTIONS ──────────────────────────────────────────────────────────
 window.adminDeleteChats=async()=>{
   if(!confirm("Delete ALL chats?"))return;
-  await set(ref(db,"chats"),null);await set(ref(db,"groups"),null);
+  await set(ref(db,"chats"),null);
+  await set(ref(db,"groups"),null);
   closePanel();showToast("All chats deleted!");
 };
 
@@ -1222,6 +1226,8 @@ window.showGodPanel=function(){
       <div style="color:var(--text2);font-size:.75rem">Full control over everything</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0">📢 Updates Group</div>
+      ${btn("📢 Post Update to Everyone","linear-gradient(135deg,#7c6fff,#ff6fb0)","godPostUpdate()")}
       <div style="color:#a0f0ff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 0">👁 Surveillance</div>
       ${btn("👁 Read ALL Chats","linear-gradient(135deg,#4fc3ff,#0080ff)","ownerReadChats()")}
       ${btn("🕵️ See Who's Online Now","linear-gradient(135deg,#3effa0,#00a060)","godOnlineUsers()")}
@@ -1598,6 +1604,44 @@ onValue(ref(db,"config/nuke"),snap=>{
     startNukeTimer(data.until);
   }
 });
+
+// ── GOD POST UPDATE ───────────────────────────────────────────────────────
+window.godPostUpdate=async()=>{
+  const msg=prompt("📢 Post an update to the Blink Updates group:");
+  if(!msg)return;
+  await push(ref(db,"groups/"+UPDATES_GID+"/messages"),{
+    text:"📢 "+msg,
+    uid:myId,
+    name:"📢 Blink Updates",
+    ts:Date.now()
+  });
+  showToast("📢 Update posted!");
+  document.querySelectorAll(".rank-panel").forEach(e=>e.remove());
+};
+
+// ── UPDATES GROUP ─────────────────────────────────────────────────────────
+const UPDATES_GID = "blink_official_updates";
+
+async function setupUpdatesGroup(){
+  // Create the group if it doesn't exist
+  const snap = await get(ref(db,"groups/"+UPDATES_GID));
+  if(!snap.val()){
+    await set(ref(db,"groups/"+UPDATES_GID),{
+      name:"📢 Blink Updates",
+      desc:"Official updates by Lakshiv",
+      owner:"__system__",
+      ownerName:"System",
+      locked:true,
+      members:{},
+      createdAt:Date.now()
+    });
+  }
+  // Auto join if not already a member
+  const g = snap.val()||{};
+  if(!(g.members&&g.members[myId])){
+    await update(ref(db,"groups/"+UPDATES_GID+"/members/"+myId),{name:myName,uid:myId,joinedAt:Date.now()});
+  }
+}
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById("msg-in").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();window.sendMessage();}});
