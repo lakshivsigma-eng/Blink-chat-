@@ -511,7 +511,7 @@ function renderGroups(filter){
     const pending=g.requests&&g.requests[myId];
     const count=g.members?Object.keys(g.members).length:0;
     const isUpdatesGrp=g.gid===UPDATES_GID;
-    return`<div class="item" onclick="openGroup('${g.gid}','${esc(g.name)}',${count})">
+    return`<div class="item" onclick="${isMember?`openGroup('${g.gid}','${esc(g.name)}',${count})`:`requestJoin('${g.gid}','${esc(g.name)}')`}">
       <div class="grp-av" style="background:${isUpdatesGrp?"linear-gradient(135deg,#7c6fff,#ff6fb0)":col(g.gid)}">${isUpdatesGrp?"📢":av(g.name)}</div>
       <div class="item-info">
         <div class="item-name">${esc(g.name)}${isUpdatesGrp?'<span style="background:#7c6fff;color:#fff;font-size:.6rem;padding:2px 6px;border-radius:6px;margin-left:6px;font-family:monospace">OFFICIAL</span>':''}</div>
