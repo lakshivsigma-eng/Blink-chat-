@@ -243,7 +243,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Syne',sans-serif;b
       <div style="padding:4px 0 8px">
         <div style="font-size:.7rem;color:var(--text2);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:1px">🎵 Music</div>
         <audio controls loop style="width:100%;border-radius:10px;height:36px">
-          <source src="https://lakshivsigma-eng.github.io/Blink-chat-/Miss you.mp3" type="audio/mpeg">
+          <source src="https://lakshivsigma-eng.github.io/Blink-chat-/shimafm-67-525707.mp3" type="audio/mpeg">
         </audio>
       </div>
       <button class="del-btn" onclick="deleteMyAccount()">🗑 Delete My Account</button>
@@ -480,7 +480,7 @@ function renderUsers(filter){
   const f=filter?allUsers.filter(u=>u.name.toLowerCase().includes(filter)):allUsers;
   if(!f.length){list.innerHTML=`<div class="empty">${allUsers.length===0?"No one here yet!":"No users found"}</div>`;return;}
   list.innerHTML=f.map(u=>`
-    <div class="item" ontouchend="event.preventDefault();openDM('${u.uid}','${esc(u.name)}')" onclick="openDM('${u.uid}','${esc(u.name)}')">
+    <div class="item" onclick="openDM('${u.uid}','${esc(u.name)}')">
       <div class="av" style="background:${col(u.uid)};${u.pic?`background-image:url(${u.pic});background-size:cover;background-position:center`:''}">${u.pic?'':av(u.name)}</div>
       <div class="item-info">
         <div class="item-name">${esc(u.name)}${u.isGod?'<span class="god-tag">✦ GOD</span>':u.isOwner?'<span class="owner-tag">👑 OWNER</span>':u.isAdmin?'<span class="admin-tag">ADMIN</span>':''}</div>
@@ -561,18 +561,21 @@ function checkInviteLink(){
 
 // ── OPEN DM ────────────────────────────────────────────────────────────────
 window.openDM=(uid,name)=>{
+  // Close sidebar
   document.getElementById("sidebar").classList.remove("open");
-  // Fully stop old listeners before switching
+  // If already in this chat, do nothing
+  if(currentChatId===chatId(myId,uid)&&currentChatType==="dm")return;
+  // Fully stop old listeners
   if(chatListener){off(chatListener);chatListener=null;}
   if(typingListener){off(typingListener);typingListener=null;}
-  // Clear typing indicator and messages immediately
-  document.getElementById("msgs").innerHTML="";
-  document.getElementById("typing-indicator").innerHTML="";
+  // Reset state
   lastMsgCount=0;
-  // Set new chat state
   currentChatId=chatId(myId,uid);
   currentChatType="dm";
   currentPartnerId=uid;
+  // Clear UI
+  document.getElementById("msgs").innerHTML="<div style='text-align:center;color:var(--text2);font-size:.8rem;padding:20px'>Loading...</div>";
+  document.getElementById("typing-indicator").innerHTML="";
   // Update header
   document.getElementById("chat-nm").textContent=name;
   document.getElementById("chat-sub").textContent="";
@@ -581,25 +584,26 @@ window.openDM=(uid,name)=>{
   // Show chat area
   document.getElementById("chat-placeholder").style.display="none";
   const ca=document.getElementById("chat-area");
-  ca.style.display="flex";
-  ca.style.flexDirection="column";
-  ca.style.height="100%";
-  // Start fresh listeners
-  startChatListeners();
+  ca.style.cssText="display:flex;flex-direction:column;height:100%";
+  // Start fresh listeners after short delay to ensure old ones are gone
+  setTimeout(()=>startChatListeners(),50);
 };
 
 // ── OPEN GROUP ─────────────────────────────────────────────────────────────
 window.openGroup=(gid,name,count)=>{
+  // Close sidebar
   document.getElementById("sidebar").classList.remove("open");
-  // Fully stop old listeners before switching
+  // If already in this chat, do nothing
+  if(currentChatId===gid&&currentChatType==="group")return;
+  // Fully stop old listeners
   if(chatListener){off(chatListener);chatListener=null;}
   if(typingListener){off(typingListener);typingListener=null;}
-  // Clear typing indicator and messages immediately
-  document.getElementById("msgs").innerHTML="";
-  document.getElementById("typing-indicator").innerHTML="";
+  // Reset state
   lastMsgCount=0;
-  // Set new chat state
   currentChatId=gid;currentChatType="group";currentPartnerId=null;
+  // Clear UI
+  document.getElementById("msgs").innerHTML="<div style='text-align:center;color:var(--text2);font-size:.8rem;padding:20px'>Loading...</div>";
+  document.getElementById("typing-indicator").innerHTML="";
   // Update header
   document.getElementById("chat-nm").textContent=name;
   document.getElementById("chat-sub").textContent=count+" members";
@@ -607,12 +611,10 @@ window.openGroup=(gid,name,count)=>{
   cavEl.textContent=av(name);cavEl.style.background=col(gid);cavEl.className="grp";
   // Show chat area
   document.getElementById("chat-placeholder").style.display="none";
-  const ca2=document.getElementById("chat-area");
-  ca2.style.display="flex";
-  ca2.style.flexDirection="column";
-  ca2.style.height="100%";
-  // Start fresh listeners
-  startChatListeners();
+  const ca=document.getElementById("chat-area");
+  ca.style.cssText="display:flex;flex-direction:column;height:100%";
+  // Start fresh listeners after short delay
+  setTimeout(()=>startChatListeners(),50);
 };
 
 function startChatListeners(){
