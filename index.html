@@ -394,7 +394,7 @@ window.joinChat=async()=>{
 
 window.leaveChat=async()=>{
   if(myId)await update(ref(db,"users/"+myId),{online:false,lastSeen:Date.now()});
-  if(chatListener){off(chatListener);chatListener=null;}
+  if(chatListener){try{chatListener();}catch(e){} chatListener=null;}
   myId=null;myName=null;
   showScreen("auth-screen");
 };
@@ -412,7 +412,7 @@ window.deleteMyAccount=async()=>{
   myId=null;myName=null;isAdmin=false;isOwner=false;
   currentChatId=null;currentChatType=null;currentPartnerId=null;
   // Stop listeners
-  if(chatListener){off(chatListener);chatListener=null;}
+  if(chatListener){try{chatListener();}catch(e){} chatListener=null;}
   if(typingListener){off(typingListener);typingListener=null;}
   // Reset UI
   document.getElementById("chat-area").style.display="none";
@@ -566,8 +566,8 @@ window.openDM=(uid,name)=>{
   // If already in this chat, do nothing
   if(currentChatId===chatId(myId,uid)&&currentChatType==="dm")return;
   // Fully stop old listeners
-  if(chatListener){off(chatListener);chatListener=null;}
-  if(typingListener){off(typingListener);typingListener=null;}
+  if(chatListener){chatListener();chatListener=null;}
+  if(typingListener){typingListener();typingListener=null;}
   // Reset state
   lastMsgCount=0;
   currentChatId=chatId(myId,uid);
@@ -596,8 +596,8 @@ window.openGroup=(gid,name,count)=>{
   // If already in this chat, do nothing
   if(currentChatId===gid&&currentChatType==="group")return;
   // Fully stop old listeners
-  if(chatListener){off(chatListener);chatListener=null;}
-  if(typingListener){off(typingListener);typingListener=null;}
+  if(chatListener){chatListener();chatListener=null;}
+  if(typingListener){typingListener();typingListener=null;}
   // Reset state
   lastMsgCount=0;
   currentChatId=gid;currentChatType="group";currentPartnerId=null;
